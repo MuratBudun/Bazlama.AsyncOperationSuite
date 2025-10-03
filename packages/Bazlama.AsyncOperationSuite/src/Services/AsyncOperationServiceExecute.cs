@@ -78,8 +78,9 @@ public partial class AsyncOperationService : BackgroundService
             try
             {
                 _logger.LogInformation("Processing operation {OperationId} with payload {PayloadId}", operation._id, payload._id);
-                var task = process.executeMetodInfo.Invoke(process.processInstance, [_serviceProvider, _logger, linkedCancellationTokenSource.Token]) as Task;
-                if (task != null)
+
+                if (process.executeMetodInfo.Invoke(process.processInstance, 
+                    [_serviceProvider, _logger, linkedCancellationTokenSource.Token]) is Task task)
                 {
                     await task;
                 }

@@ -50,6 +50,7 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
     {
         var progressPayload = new AsyncOperationProgress
         {
+            _id = Guid.NewGuid().ToString(),
             CreatedAt = DateTime.Now,
             OperationId = AsyncOperation._id,
             ProgressMessage = message,
@@ -57,15 +58,17 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
             Status = AsyncOperation.Status
         };
 
-        Progress = await AsyncOperationService.ProgressRepository.CreateAsync(progressPayload, cancellationToken);
+        Progress = await AsyncOperationService.ProgressRepository.UpsertAysnc(progressPayload, cancellationToken);
     }
 
     private async Task UpdateStatus(AsyncOperationStatus status, CancellationToken cancellationToken)
     {
         AsyncOperation.Status = status;
         await AsyncOperationService.OperationRepository.UpdateAsync(AsyncOperation, cancellationToken);
+
         Progress ??= new AsyncOperationProgress
         {
+            _id = Guid.NewGuid().ToString(),
             OwnerId = AsyncOperation.OwnerId,
             CreatedAt = DateTime.Now,
             OperationId = AsyncOperation._id,
@@ -74,13 +77,14 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
             Status = status
         };
         Progress.Status = status;
-        Progress = await AsyncOperationService.ProgressRepository.CreateAsync(Progress, cancellationToken);
+        Progress = await AsyncOperationService.ProgressRepository.UpsertAysnc(Progress, cancellationToken);
+
     }
 
     private async Task WriteResult(CancellationToken cancellationToken)
     {
         if (Result == null) return;
-        Result = await AsyncOperationService.ResultRepository.CreateAsync(Result, cancellationToken);
+        Result = await AsyncOperationService.ResultRepository.UpsertAysnc(Result, cancellationToken);
     }
 
     public async Task ExecuteAsync(

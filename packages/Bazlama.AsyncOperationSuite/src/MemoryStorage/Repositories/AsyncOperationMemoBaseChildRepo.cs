@@ -20,7 +20,14 @@ public class AsyncOperationMemoBaseChildRepo<T> : IAsyncOperationRepositoryChild
         return Task.FromResult<T?>(item);
     }
 
-    public Task<T?> GetAsync(string id, CancellationToken cancellationToken = default)
+    public Task<T?> UpsertAysnc(T item, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(item);
+		_items[item._id] = item;
+		return Task.FromResult<T?>(item);
+	}
+
+	public Task<T?> GetAsync(string id, CancellationToken cancellationToken = default)
     {
         if (_items.ContainsKey(id))
         {

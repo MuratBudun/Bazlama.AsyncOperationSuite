@@ -26,7 +26,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Bazlama.AsyncOperationSuite" Version="1.0.0" />
+    <PackageReference Include="NJsonSchema" Version="11.5.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bazlama.AsyncOperationSuite\Bazlama.AsyncOperationSuite.csproj" />
   </ItemGroup>
 
 </Project>

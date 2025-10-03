@@ -6,12 +6,12 @@ namespace Bazlama.AsyncOperationSuite.Services;
 
 public partial class AsyncOperationService : BackgroundService
 {
-    public List<RegisteredTypeDto> GetRegisteredTypeDtos()
+    public List<RegisteredPayload> GetRegisteredPayloads()
     {
-        var registeredTypes = new List<RegisteredTypeDto>();
+        var registeredTypes = new List<RegisteredPayload>();
         foreach (var (payloadType, processType) in GetRegisteredTypes())
-        {
-            registeredTypes.Add(new RegisteredTypeDto
+        {   
+            registeredTypes.Add(new RegisteredPayload
             {
                 PayloadTypeName = payloadType?.Name ?? "Unknown",
                 ProcessTypeName = processType?.Name ?? "Unknown"
@@ -19,6 +19,35 @@ public partial class AsyncOperationService : BackgroundService
         }
 
         return registeredTypes;
+    }
+
+    public Type? GetPayloadTypeByName(string name)
+	{
+		if (string.IsNullOrWhiteSpace(name)) return null;
+		if (_payloadTypes.ContainsKey(name))
+		{
+			return _payloadTypes[name];
+		}
+		return null;
+	}
+
+	public List<Type> GetRegisteredPayloadTypes()
+	{
+		return [.. _payloadTypes.Values];
+	}
+
+	public AsyncOperationActiveProcess GetActiveProcess(string operationId) {
+        var activeProcess = _activeProcesses[operationId];
+        return activeProcess;
+    }
+
+    public void RemoveActiveProcess(string operationId, 
+        CancellationToken cancellationToken = default)
+    {
+        if (_activeProcesses.ContainsKey(operationId))
+        {
+            _activeProcesses.Remove(operationId, out _);
+        }
     }
 
     public List<ActiveProcessDto> GetActiveProcesses()
