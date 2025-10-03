@@ -6,12 +6,30 @@ namespace Bazlama.AsyncOperationSuite.Services;
 
 public partial class AsyncOperationService : BackgroundService
 {
-    public List<RegisteredPayload> GetRegisteredPayloads()
+	#region Engine ...
+    public EngineInfoDto GetEngineInfo()
+	{
+		var engineInfo = new EngineInfoDto
+		{
+			StartedAt = _engineStartedAt,
+			WorkerCount = _config.WorkerCount,
+			QueueSize = _config.QueueSize,
+			CurrentQueueSize = _channel.Reader.Count,
+			ActiveProcessCount = _activeProcesses.Count,
+			PayloadConcurrentConstraints = _config.PayloadConcurrentConstraints,
+			StorageType = _storage?.GetType().Name ?? "Unknown"
+		};
+		return engineInfo;
+	}
+	#endregion
+
+	#region Payload ...
+	public List<RegisteredPayloadDto> GetRegisteredPayloads()
     {
-        var registeredTypes = new List<RegisteredPayload>();
+        var registeredTypes = new List<RegisteredPayloadDto>();
         foreach (var (payloadType, processType) in GetRegisteredTypes())
         {   
-            registeredTypes.Add(new RegisteredPayload
+            registeredTypes.Add(new RegisteredPayloadDto
             {
                 PayloadTypeName = payloadType?.Name ?? "Unknown",
                 ProcessTypeName = processType?.Name ?? "Unknown"
@@ -35,10 +53,39 @@ public partial class AsyncOperationService : BackgroundService
 	{
 		return [.. _payloadTypes.Values];
 	}
+	#endregion
 
-	public AsyncOperationActiveProcess GetActiveProcess(string operationId) {
-        var activeProcess = _activeProcesses[operationId];
+	#region Active Process ...
+	public AsyncOperationActiveProcess? GetActiveProcess(string operationId) {
+		if (string.IsNullOrWhiteSpace(operationId)) return null;
+		if (!_activeProcesses.ContainsKey(operationId)) return null;
+
+		var activeProcess = _activeProcesses[operationId];
         return activeProcess;
+    }
+
+    public List<ActiveProcessDto> GetActiveProcesses()
+    {
+        var activeProcesses = new List<ActiveProcessDto>();
+        foreach (var activeProcess in _activeProcesses.Values)
+        {
+			activeProcesses.Add(new ActiveProcessDto
+            {
+                CreatedAt = activeProcess.CreatedAt,
+                RunningTimeMs = TimeSpan.FromTicks(DateTime.Now.Ticks - activeProcess.CreatedAt.Ticks).TotalMilliseconds,
+                OwnerId = activeProcess.OwnerId,
+                OperationId = activeProcess.OperationId,
+                PayloadId = activeProcess.PayloadId,
+                PayloadType = activeProcess.PayloadType,
+                OperationName = activeProcess.OperationName,
+				OperationDescription = activeProcess.OperationDescription,
+				Status = activeProcess.Status,
+				Progress = activeProcess.Progress,
+				ProgressMessage = activeProcess.ProgressMessage
+			});
+        }
+
+        return activeProcesses;
     }
 
     public void RemoveActiveProcess(string operationId, 
@@ -49,28 +96,10 @@ public partial class AsyncOperationService : BackgroundService
             _activeProcesses.Remove(operationId, out _);
         }
     }
+	#endregion
 
-    public List<ActiveProcessDto> GetActiveProcesses()
-    {
-        var activeProcesses = new List<ActiveProcessDto>();
-        foreach (var activeProcess in _activeProcesses.Values)
-        {
-            activeProcesses.Add(new ActiveProcessDto
-            {
-                CreatedAt = activeProcess.CreatedAt,
-                RunningTimeMs = TimeSpan.FromTicks(DateTime.Now.Ticks - activeProcess.CreatedAt.Ticks).TotalMilliseconds,
-                OwnerId = activeProcess.OwnerId,
-                OperationId = activeProcess.OperationId,
-                PayloadId = activeProcess.PayloadId,
-                PayloadType = activeProcess.PayloadType,
-                OperationName = activeProcess.OperationName
-            });
-        }
-
-        return activeProcesses;
-    }
-
-    public async Task<AsyncOperation?> GetOperation(string operationId,
+	#region Operation ...
+	public async Task<AsyncOperation?> GetOperation(string operationId,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(operationId)) return null;
@@ -146,5 +175,7 @@ public partial class AsyncOperationService : BackgroundService
 
         return await _storage.Result.GetAsync(resultId, cancellationToken);
     }
-    #endregion
+	#endregion
+
+	#endregion
 }

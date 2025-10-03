@@ -48,7 +48,14 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
         int progress,
         CancellationToken cancellationToken)
     {
-        var progressPayload = new AsyncOperationProgress
+		var activeProcess = AsyncOperationService.GetActiveProcess(this.AsyncOperation._id);
+		if (activeProcess != null)
+		{
+			activeProcess.Progress = progress;
+			activeProcess.ProgressMessage = message;
+		}
+
+		var progressPayload = new AsyncOperationProgress
         {
             _id = Guid.NewGuid().ToString(),
             CreatedAt = DateTime.Now,
@@ -61,25 +68,30 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
         Progress = await AsyncOperationService.ProgressRepository.UpsertAysnc(progressPayload, cancellationToken);
     }
 
-    private async Task UpdateStatus(AsyncOperationStatus status, CancellationToken cancellationToken)
-    {
-        AsyncOperation.Status = status;
-        await AsyncOperationService.OperationRepository.UpdateAsync(AsyncOperation, cancellationToken);
+	private async Task UpdateStatus(AsyncOperationStatus status, CancellationToken cancellationToken)
+	{
+		AsyncOperation.Status = status;
 
-        Progress ??= new AsyncOperationProgress
-        {
-            _id = Guid.NewGuid().ToString(),
-            OwnerId = AsyncOperation.OwnerId,
-            CreatedAt = DateTime.Now,
-            OperationId = AsyncOperation._id,
-            ProgressMessage = status.ToString(),
-            Progress = 0,
-            Status = status
-        };
-        Progress.Status = status;
-        Progress = await AsyncOperationService.ProgressRepository.UpsertAysnc(Progress, cancellationToken);
+		var activeProcess = AsyncOperationService.GetActiveProcess(this.AsyncOperation._id);
+		if (activeProcess != null) {
+			activeProcess.Status = status;
+		}
 
-    }
+		await AsyncOperationService.OperationRepository.UpdateAsync(AsyncOperation, cancellationToken);
+
+		Progress ??= new AsyncOperationProgress
+		{
+			_id = Guid.NewGuid().ToString(),
+			OwnerId = AsyncOperation.OwnerId,
+			CreatedAt = DateTime.Now,
+			OperationId = AsyncOperation._id,
+			ProgressMessage = status.ToString(),
+			Progress = 0,
+			Status = status
+		};
+		Progress.Status = status;
+		Progress = await AsyncOperationService.ProgressRepository.UpsertAysnc(Progress, cancellationToken);
+	}
 
     private async Task WriteResult(CancellationToken cancellationToken)
     {

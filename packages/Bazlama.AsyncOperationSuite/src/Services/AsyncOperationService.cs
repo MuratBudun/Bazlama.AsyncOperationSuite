@@ -13,6 +13,7 @@ namespace Bazlama.AsyncOperationSuite.Services;
 
 public partial class AsyncOperationService : BackgroundService
 {
+    private DateTime? _engineStartedAt = null;
     private readonly Dictionary<string, Type> _payloadTypes = [];
     private readonly Dictionary<Type, Type> _processTypes = [];
 

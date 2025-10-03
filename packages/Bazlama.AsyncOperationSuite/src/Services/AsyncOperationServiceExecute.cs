@@ -9,11 +9,13 @@ public partial class AsyncOperationService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("AsyncOperationManager service is starting.");
-
+		_engineStartedAt = DateTime.Now;
+		
         var tasks = Enumerable.Range(0, _config.WorkerCount).Select(_ => Task.Run(() => Worker(stoppingToken)));
         await Task.WhenAll(tasks);
 
-        _logger.LogInformation("AsyncOperationManager service is stopping.");
+		_engineStartedAt = null;
+		_logger.LogInformation("AsyncOperationManager service is stopping.");
     }
 
     private async Task Worker(CancellationToken stoppingToken)
@@ -66,7 +68,13 @@ public partial class AsyncOperationService : BackgroundService
                 OperationId = operation._id,
                 PayloadId = payload._id,
                 PayloadType = payload.GetType().Name,
-                CancellationTokenSource = cancellationTokenSource
+				ProcessType = processType.Name,
+				OperationName = operation.Name,
+				OperationDescription = operation.Description,
+				Progress = 0,
+				Status = AsyncOperationStatus.Running,
+                ProgressMessage = "Operation is running",
+				CancellationTokenSource = cancellationTokenSource
             };
 
             if (!_activeProcesses.TryAdd(activeProcess.OperationId, activeProcess))

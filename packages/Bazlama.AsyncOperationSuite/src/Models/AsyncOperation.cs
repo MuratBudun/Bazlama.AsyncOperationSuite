@@ -8,10 +8,10 @@ public class AsyncOperation : IAsyncOperationStorable
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public string OwnerId { get; set; }
     public string Name { get; set; }
-    public AsyncOperationStatus Status { get; set; } = AsyncOperationStatus.Pending;
+	public AsyncOperationStatus Status { get; set; } = AsyncOperationStatus.Pending;
 
-    public string? Description { get; set; }
-    public DateTime? StartedAt { get; set; }
+    public string Description { get; set; } = string.Empty;
+	public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime? FailedAt { get; set; }
     public DateTime? CanceledAt { get; set; }

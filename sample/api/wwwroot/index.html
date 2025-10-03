@@ -158,14 +158,28 @@
         .auto-refresh {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
             font-size: 0.875rem;
         }
 
-        .auto-refresh input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
+        .auto-refresh label {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .auto-refresh select {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
             cursor: pointer;
+        }
+
+        .auto-refresh select:focus {
+            outline: none;
+            border-color: var(--primary-color);
         }
 
         .process-table {
@@ -604,6 +618,9 @@
                     <div class="stat-value" id="completedProcesses">0</div>
                     <div class="stat-label">Completed</div>
                 </div>
+                <div id="engineInfo" style="display: flex; gap: 2rem;">
+                    <!-- Engine stats will be injected here -->
+                </div>
             </div>
         </div>
     </header>
@@ -617,10 +634,25 @@
                 <button class="btn btn-success" onclick="showPublishModal()">
                     <span>&#43;</span> New Operation
                 </button>
+                <button class="btn btn-secondary" onclick="showEngineInfoModal()">
+                    <span>&#9881;</span> Engine Info
+                </button>
             </div>
             <div class="auto-refresh">
-                <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
-                <label for="autoRefresh">Auto-refresh (5s)</label>
+                <label for="autoRefreshInterval">Auto-refresh:</label>
+                <select id="autoRefreshInterval" onchange="toggleAutoRefresh()">
+                    <option value="0">Off</option>
+                    <option value="1000">1s</option>
+                    <option value="2000">2s</option>
+                    <option value="3000" selected>3s</option>
+                    <option value="4000">4s</option>
+                    <option value="5000">5s</option>
+                    <option value="6000">6s</option>
+                    <option value="7000">7s</option>
+                    <option value="8000">8s</option>
+                    <option value="9000">9s</option>
+                    <option value="10000">10s</option>
+                </select>
             </div>
         </div>
 
@@ -683,11 +715,28 @@
         </div>
     </div>
 
+    <!-- Engine Info Modal -->
+    <div class="modal" id="engineInfoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Engine Information</h2>
+                <button class="modal-close" onclick="closeModal('engineInfoModal')">&times;</button>
+            </div>
+            <div id="engineInfoModalBody">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>Loading engine info...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let allProcesses = [];
         let autoRefreshInterval = null;
         let payloadSchemas = {};
         let selectedPayloadType = null;
+        let engineInfo = null;
         const API_BASE = '/api/aos';
 
         const statusMap = {
@@ -710,6 +759,17 @@
             }
         }
 
+        async function fetchEngineInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/query/engine`);
+                if (!response.ok) throw new Error('Failed to fetch engine info');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching engine info:', error);
+                return null;
+            }
+        }
+
         async function fetchPayloadSchemas() {
             try {
                 const response = await fetch(`${API_BASE}/payload/type`);
@@ -722,12 +782,18 @@
         }
 
         async function refreshData() {
-            const processes = await fetchActiveProcesses();
+            const [processes, engine] = await Promise.all([
+                fetchActiveProcesses(),
+                fetchEngineInfo()
+            ]);
+            
             allProcesses = processes;
+            engineInfo = engine;
             
             updatePayloadTypeFilter();
             applyFilters();
             updateStats();
+            updateEngineStats();
         }
 
         function updatePayloadTypeFilter() {
@@ -811,10 +877,14 @@
                                 <td>
                                     <strong>${process.operationName || 'N/A'}</strong>
                                     ${process.operationDescription ? `<br><small style="color: var(--text-secondary);">${process.operationDescription}</small>` : ''}
+                                    ${process.status === 1 && process.progressMessage ? `<br><small style="color: var(--primary-color); font-weight: 600;">&#9654; ${process.progressMessage}</small>` : ''}
                                 </td>
                                 <td>${process.payloadType || 'N/A'}</td>
                                 <td class="time-display">${formatDate(process.createdAt)}</td>
-                                <td class="time-display">${formatDuration(process.runningTimeMs)}</td>
+                                <td class="time-display">
+                                    ${formatDuration(process.runningTimeMs)}
+                                    ${process.status === 1 && process.progress != null ? `<br><div class="progress-bar"><div class="progress-fill" style="width: ${process.progress}%"></div></div><small style="color: var(--text-secondary);">${process.progress}%</small>` : ''}
+                                </td>
                                 <td><code style="font-size: 0.75rem; color: var(--text-secondary);">${process.operationId?.substring(0, 8) || 'N/A'}</code></td>
                                 <td>
                                     <div class="action-buttons">
@@ -837,6 +907,29 @@
                 allProcesses.filter(p => p.status === 1).length;
             document.getElementById('completedProcesses').textContent = 
                 allProcesses.filter(p => p.status === 2).length;
+        }
+
+        function updateEngineStats() {
+            if (!engineInfo) return;
+
+            // Update engine info in header or create a new section
+            const existingEngineInfo = document.getElementById('engineInfo');
+            if (existingEngineInfo) {
+                existingEngineInfo.innerHTML = `
+                    <div class="stat-item">
+                        <div class="stat-value">${engineInfo.workerCount || 0}</div>
+                        <div class="stat-label">Workers</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${engineInfo.currentQueueSize || 0}/${engineInfo.queueSize || 0}</div>
+                        <div class="stat-label">Queue</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${engineInfo.queuePercentUsage || 0}%</div>
+                        <div class="stat-label">Queue Usage</div>
+                    </div>
+                `;
+            }
         }
 
         async function showDetails(operationId) {
@@ -976,6 +1069,89 @@
             }
         }
 
+        async function showEngineInfoModal() {
+            const modal = document.getElementById('engineInfoModal');
+            const modalBody = document.getElementById('engineInfoModalBody');
+            
+            modalBody.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading engine info...</span></div>';
+            modal.classList.add('active');
+
+            try {
+                const engine = await fetchEngineInfo();
+                
+                if (!engine) {
+                    modalBody.innerHTML = '<div class="error-message">Failed to load engine information.</div>';
+                    return;
+                }
+
+                let html = `
+                    <div class="detail-row">
+                        <div class="detail-label">Started At</div>
+                        <div class="detail-value">${engine.startedAt ? formatDate(engine.startedAt) : 'N/A'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Worker Count</div>
+                        <div class="detail-value">${engine.workerCount || 0}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Queue Size</div>
+                        <div class="detail-value">${engine.queueSize || 0}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Current Queue Size</div>
+                        <div class="detail-value">${engine.currentQueueSize || 0}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Queue Usage</div>
+                        <div class="detail-value">
+                            <div class="progress-bar" style="width: 200px;">
+                                <div class="progress-fill" style="width: ${engine.queuePercentUsage || 0}%"></div>
+                            </div>
+                            <div class="progress-text">${engine.queuePercentUsage || 0}%</div>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Active Process Count</div>
+                        <div class="detail-value">${engine.activeProcessCount || 0}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Storage Type</div>
+                        <div class="detail-value">${engine.storageType || 'N/A'}</div>
+                    </div>
+                `;
+
+                if (engine.payloadConcurrentConstraints && Object.keys(engine.payloadConcurrentConstraints).length > 0) {
+                    html += `
+                        <div class="detail-row">
+                            <div class="detail-label">Payload Concurrent Constraints</div>
+                            <div class="detail-value">
+                                <table style="width: 100%; font-size: 0.875rem;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--border-color);">
+                                            <th style="text-align: left; padding: 0.5rem 0;">Payload Type</th>
+                                            <th style="text-align: right; padding: 0.5rem 0;">Max Concurrent</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${Object.entries(engine.payloadConcurrentConstraints).map(([type, limit]) => `
+                                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                                <td style="padding: 0.5rem 0;">${type}</td>
+                                                <td style="text-align: right; padding: 0.5rem 0;">${limit}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                modalBody.innerHTML = html;
+            } catch (error) {
+                modalBody.innerHTML = `<div class="error-message">Failed to load engine info: ${error.message}</div>`;
+            }
+        }
+
         function selectPayloadType(type) {
             selectedPayloadType = type;
             const modalBody = document.getElementById('publishModalBody');
@@ -1011,15 +1187,19 @@
                 properties = schema.properties;
             }
 
-            // Base fields that we want to show
-            const baseFields = ['Name', 'Description'];
-            
-            // Render base fields first
-            baseFields.forEach(fieldName => {
-                if (properties[fieldName]) {
-                    html += generateFormField(fieldName, properties[fieldName]);
-                }
-            });
+            // Add Operation Name and Description fields first (not from schema)
+            html += `
+                <div class="form-group">
+                    <label for="OperationName">Operation Name *</label>
+                    <input type="text" id="OperationName" name="OperationName" class="form-control" required>
+                    <small>A descriptive name for this operation</small>
+                </div>
+                <div class="form-group">
+                    <label for="OperationDescription">Operation Description</label>
+                    <textarea id="OperationDescription" name="OperationDescription" class="form-control" rows="2"></textarea>
+                    <small>Optional description of what this operation does</small>
+                </div>
+            `;
 
             // Render custom fields (excluding base and internal fields)
             const excludeFields = ['_id', 'CreatedAt', 'OwnerId', 'OperationId', 'PayloadType', 'Name', 'Description'];
@@ -1075,8 +1255,21 @@
             const form = event.target;
             const formData = new FormData(form);
             const payload = {};
+            
+            // Extract operation name and description for query params
+            let operationName = '';
+            let operationDescription = '';
 
             for (let [key, value] of formData.entries()) {
+                if (key === 'OperationName') {
+                    operationName = value;
+                    continue;
+                }
+                if (key === 'OperationDescription') {
+                    operationDescription = value;
+                    continue;
+                }
+                
                 if (value === '') continue;
                 
                 const input = form.elements[key];
@@ -1095,7 +1288,14 @@
             modalBody.innerHTML = '<div class="loading"><div class="spinner"></div><span>Creating operation...</span></div>';
 
             try {
-                const response = await fetch(`${API_BASE}/publish?payloadType=${selectedPayloadType}`, {
+                // Build query string with operation name and description
+                const queryParams = new URLSearchParams({
+                    payloadType: selectedPayloadType,
+                    operationName: operationName,
+                    operationDescription: operationDescription
+                });
+
+                const response = await fetch(`${API_BASE}/publish?${queryParams.toString()}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1113,6 +1313,7 @@
                 modalBody.innerHTML = `
                     <div class="success-message">
                         <strong>Operation created successfully!</strong><br>
+                        <strong>Name:</strong> ${operationName}<br>
                         Operation ID: <code>${result.operationId || result._id}</code>
                     </div>
                     <div class="form-actions">
@@ -1143,13 +1344,17 @@
         }
 
         function toggleAutoRefresh() {
-            const enabled = document.getElementById('autoRefresh').checked;
+            const interval = parseInt(document.getElementById('autoRefreshInterval').value);
             
-            if (enabled) {
-                autoRefreshInterval = setInterval(refreshData, 5000);
-            } else {
+            // Clear existing interval
+            if (autoRefreshInterval) {
                 clearInterval(autoRefreshInterval);
                 autoRefreshInterval = null;
+            }
+            
+            // Set new interval if not "Off"
+            if (interval > 0) {
+                autoRefreshInterval = setInterval(refreshData, interval);
             }
         }
 
@@ -1191,6 +1396,7 @@
 
         // Initialize
         refreshData();
+        toggleAutoRefresh(); // Start auto-refresh with default interval (3s)
     </script>
 </body>
 </html>
