@@ -108,8 +108,24 @@ public partial class AsyncOperationService : BackgroundService
         return await _storage.Operation.GetAsync(operationId, cancellationToken);
     }
 
-    #region Payload ...
-    public async Task<AsyncOperationPayloadBase?> GetOperationPayload(string operationId,
+    public async Task<IEnumerable<AsyncOperation>> GetOperations(
+		DateTime startDate, DateTime endDate, List<AsyncOperationStatus> status,
+		string? ownerId, string? search,
+		bool isDesc = true, int pageNumber = 1, int pageSize = 10,
+		CancellationToken cancellationToken = default)
+    {
+		if (_storage == null || _storage.Operation == null) 
+            return [];
+
+		return await _storage.Operation.GetOperationsAsync(
+            startDate, endDate, status, 
+            ownerId, search, isDesc, pageNumber, pageSize,
+            cancellationToken
+        );
+    }
+
+	#region Payload ...
+	public async Task<AsyncOperationPayloadBase?> GetOperationPayload(string operationId,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(operationId)) return null;

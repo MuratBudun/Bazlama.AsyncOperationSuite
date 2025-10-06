@@ -11,9 +11,13 @@ public interface IAsyncOperationRepository<T>
     Task RemoveAsync(string id, CancellationToken cancellationToken = default);
     Task<T?> UpsertAysnc(T item, CancellationToken cancellationToken = default);
 
+	Task<IEnumerable<T>> GetLastOperationsAsync(
+		int count, List<AsyncOperationStatus> status,
+		string? ownerId, CancellationToken cancellationToken = default);
+
 	Task<IEnumerable<T>> GetOperationsAsync(
         DateTime startDate, DateTime endDate, List<AsyncOperationStatus> status,
-        string? ownerId, string? name,
+        string? ownerId, string? search,
         bool isDesc = true, int pageNumber = 1, int pageSize = 10,
         CancellationToken cancellationToken = default);
 }
