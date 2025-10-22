@@ -154,7 +154,15 @@ public partial class AsyncOperationService : BackgroundService
         return await _storage.Progress.GetByOperationIdAsync(operationId, cancellationToken);
     }
 
-    public async Task<AsyncOperationProgress?> GetOperationProgressById(string progressId,
+    public async Task<IEnumerable<AsyncOperationProgress>> GetOperationProgressAll(string operationId,
+		CancellationToken cancellationToken)
+	{
+		if (string.IsNullOrWhiteSpace(operationId)) return [];
+		if (_storage == null || _storage.Progress == null) return [];
+		return await _storage.Progress.GetAllByOprationId(operationId, cancellationToken);
+	}
+
+	public async Task<AsyncOperationProgress?> GetOperationProgressById(string progressId,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(progressId)) return null;
@@ -180,7 +188,7 @@ public partial class AsyncOperationService : BackgroundService
         if (string.IsNullOrWhiteSpace(operationId)) return null;
         if (_storage == null || _storage.Result == null) return null;
 
-        return await _storage.Result.GetAsync(operationId, cancellationToken);
+        return await _storage.Result.GetByOperationIdAsync(operationId, cancellationToken);
     }
 
     public async Task<AsyncOperationResult?> GetOperationResultById(string resultId,

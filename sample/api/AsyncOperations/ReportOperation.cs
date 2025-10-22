@@ -4,18 +4,10 @@ using Bazlama.AsyncOperationSuite.Services;
 
 namespace Example.Web.Api.AsyncOperations;
 
-public enum ReportType
-{
-	Daily,
-	Weekly,
-	Monthly
-}
-
 public class ReportOperationPayload: AsyncOperationPayloadBase
 {
     public DateTime ReportStartDate { get; set; }
     public DateTime ReportEndDate { get; set; }
-    public ReportType ReportType { get; set; } = ReportType.Daily;
     public String ReportDescription { get; set; } = string.Empty;
 }
 
@@ -35,7 +27,7 @@ public class AsyncOperationTestProcessor : AsyncOperationProcess<ReportOperation
         CancellationToken cancellationToken)
     {
         var progress = 0;
-        Console.WriteLine($"Starting the process, {Payload.ReportStartDate} - {Payload.ReportEndDate} | {Payload.ReportType}");
+        Console.WriteLine($"Starting the process, {Payload.ReportStartDate} - {Payload.ReportEndDate}");
         await PublishProgress("Starting the process", progress, cancellationToken);
         await Task.Delay(5000, cancellationToken);
         Console.WriteLine("Processing the data");

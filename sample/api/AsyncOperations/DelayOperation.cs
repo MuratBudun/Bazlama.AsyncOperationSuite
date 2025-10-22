@@ -27,12 +27,17 @@ public class DelayOperationProcessor : AsyncOperationProcess<DelayOperationPaylo
     {
         Console.WriteLine($"Starting the process, {Payload.Name} - {Payload.DelaySeconds} second(s) | {Payload.StepCount} step(s)");
 
-        for (var i = 0; i < Payload.StepCount; i++)
+        int totalSeconds = 0;
+		for (var i = 0; i < Payload.StepCount; i++)
         {
             var progress = (i + 1) * 100 / Payload.StepCount;
             await PublishProgress($"Step {i + 1} of {Payload.StepCount}", progress, cancellationToken);
             await Task.Delay(Payload.DelaySeconds * 1000, cancellationToken);
             Console.WriteLine($"Step {i + 1} of {Payload.StepCount} completed");
-        }
-    }
+			totalSeconds += Payload.DelaySeconds;
+		}
+
+		SetResult($"{totalSeconds}", $"Delay operation '{Payload.Name}' completed successfully.");
+		Console.WriteLine($"Delay operation '{Payload.Name}' completed successfully.");
+	}
 }

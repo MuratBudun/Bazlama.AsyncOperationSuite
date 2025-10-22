@@ -1,7 +1,6 @@
 ﻿using Bazlama.AsyncOperationSuite.Models;
 using Bazlama.AsyncOperationSuite.Dto;
 using Bazlama.AsyncOperationSuite.Services;
-using Bazlama.AsyncOperationSuite.Exceptions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -98,7 +97,19 @@ internal class AsyncOperationQueryController: ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("operation/{operationId}/progress")]
+	[HttpGet("operation/{operationId}/result")]
+	[ProducesResponseType<AsyncOperationResult>(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status404NotFound)]
+	public async Task<ActionResult<AsyncOperationPayloadBase>> GetOperationResult(string operationId,
+		CancellationToken cancellationToken)
+	{
+		var result = await _asyncOperationService.GetOperationResult(operationId, cancellationToken);
+		if (result == null) return NotFound();
+
+		return Ok(result);
+	}
+
+	[HttpGet("operation/{operationId}/progress")]
     [ProducesResponseType<AsyncOperationProgress>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<AsyncOperationProgress>> GetOperationProgress(string operationId,
@@ -109,6 +120,18 @@ internal class AsyncOperationQueryController: ControllerBase
 
         return Ok(result);
     }
+
+	[HttpGet("operation/{operationId}/progress/all")]
+	[ProducesResponseType<List<AsyncOperationProgress>>(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status404NotFound)]
+	public async Task<ActionResult<AsyncOperationProgress>> GetOperationProgressAll(string operationId,
+		CancellationToken cancellationToken)
+	{
+		var result = await _asyncOperationService.GetOperationProgressAll(operationId, cancellationToken);
+		if (result == null) return NotFound();
+
+		return Ok(result);
+	}
 
 	[HttpGet("payload/{payloadId}")]
 	[ProducesResponseType<AsyncOperationPayloadBase>(StatusCodes.Status200OK)]
@@ -132,6 +155,33 @@ internal class AsyncOperationQueryController: ControllerBase
 		if (payload == null) return NotFound();
 
 		var result = await _asyncOperationService.GetOperationProgress(payload.OperationId, cancellationToken);
+		if (result == null) return NotFound();
+
+		return Ok(result);
+	}
+
+	[HttpGet("payload/{payloadId}/progress/all")]
+	[ProducesResponseType<AsyncOperationProgress>(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status404NotFound)]
+	public async Task<ActionResult<List<AsyncOperationProgress>>> GetPayloadProgressAll(string payloadId,
+		CancellationToken cancellationToken)
+	{
+		var payload = await _asyncOperationService.GetOperationPayloadById(payloadId, cancellationToken);
+		if (payload == null) return NotFound();
+
+		var result = await _asyncOperationService.GetOperationProgressAll(payload.OperationId, cancellationToken);
+		if (result == null) return NotFound();
+
+		return Ok(result);
+	}
+
+	[HttpGet("result/{resultId}")]
+	[ProducesResponseType<AsyncOperationResult>(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status404NotFound)]
+	public async Task<ActionResult<AsyncOperationPayloadBase>> GetResult(string resultId,
+		CancellationToken cancellationToken)
+	{
+		var result = await _asyncOperationService.GetOperationResultById(resultId, cancellationToken);
 		if (result == null) return NotFound();
 
 		return Ok(result);

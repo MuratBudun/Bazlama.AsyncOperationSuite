@@ -138,7 +138,8 @@ public partial class AsyncOperationService : BackgroundService
             throw new QueueFullException("The channel queue is full.");
         }
 
-        try
+        payload.PayloadType = payload.GetType().Name;
+		try
         {
             var storedOperation = await OperationRepository.CreateAsync(operation, cancellationToken);
             if (storedOperation == null)

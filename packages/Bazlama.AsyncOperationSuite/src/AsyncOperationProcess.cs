@@ -93,7 +93,20 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
 		Progress = await AsyncOperationService.ProgressRepository.UpsertAysnc(Progress, cancellationToken);
 	}
 
-    private async Task WriteResult(CancellationToken cancellationToken)
+    public void SetResult(string data, string message)
+	{
+        Result = new AsyncOperationResult()
+        {
+            _id = Guid.NewGuid().ToString(),
+            CreatedAt = DateTime.Now,
+            OwnerId = AsyncOperation.OwnerId,
+            OperationId = AsyncOperation._id,
+            Result = data,
+            ResultMessage = message
+        };
+	}
+
+	private async Task WriteResult(CancellationToken cancellationToken)
     {
         if (Result == null) return;
         Result = await AsyncOperationService.ResultRepository.UpsertAysnc(Result, cancellationToken);
@@ -127,7 +140,7 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
             AsyncOperation.FailedAt = DateTime.Now;
             AsyncOperation.ErrorMessage = "Operation was cancelled";
             AsyncOperation.ExecutionTimeMs = (int)stopWatch.ElapsedMilliseconds;
-            await UpdateStatus(AsyncOperationStatus.Canceled, cancellationToken);
+            await UpdateStatus(AsyncOperationStatus.Canceled, default);
         }
         catch (Exception ex)
         {

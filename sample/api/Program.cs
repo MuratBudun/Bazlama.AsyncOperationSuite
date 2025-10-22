@@ -1,9 +1,10 @@
 using Bazlama.AsyncOperationSuite.Extensions;
-using Bazlama.AsyncOperationSuite.MemoryStorage;
+using Bazlama.AsyncOperationSuite.Storage.MemoryStorage;
 using Bazlama.AsyncOperationSuite.Mvc.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Bazlama.AsyncOperationSuite.Storage.MSSQLStorage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,7 +27,10 @@ builder.Services.AddAuthorization();
 
 // Add services to the container.
 builder.Services.AddAsyncOperationSuiteMemoryStorage();
+
+// builder.Services.AddAsyncOperationSuiteMSSQLStorage(builder.Configuration);
 builder.Services.AddAsyncOperationSuiteService(builder.Configuration);
+
 builder.Services.AddControllers();
 builder.Services.AddAsyncOperationSuiteMvcAllControllers(requireAuthorization: false);
 //builder.Services.AddAsyncOperationSuiteMvcOperationPayload(requireAuthorization: false);
@@ -49,11 +53,11 @@ var app = builder.Build();
 app.UseCors("all");
 
 // Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
+if (app.Environment.IsDevelopment())
+{
 app.UseSwagger();
     app.UseSwaggerUI();
-//}
+}
 
 app.UseHttpsRedirection();
 

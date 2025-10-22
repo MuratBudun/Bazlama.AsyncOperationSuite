@@ -82,7 +82,6 @@
         .stat-label {
             font-size: 0.75rem;
             color: var(--text-secondary);
-            text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
@@ -155,6 +154,11 @@
             background-color: #b91c1c;
         }
 
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+        }
+
         .auto-refresh {
             display: flex;
             align-items: center;
@@ -203,7 +207,6 @@
             text-align: left;
             font-size: 0.75rem;
             font-weight: 600;
-            text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-secondary);
             border-bottom: 2px solid var(--border-color);
@@ -229,7 +232,6 @@
             border-radius: 12px;
             font-size: 0.75rem;
             font-weight: 600;
-            text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
@@ -285,24 +287,28 @@
         }
 
         .btn-icon {
-            padding: 0.5rem;
-            border: none;
-            border-radius: 4px;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
             cursor: pointer;
-            background-color: transparent;
+            background-color: var(--bg-secondary);
             color: var(--text-secondary);
             transition: all 0.2s;
             font-size: 0.875rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
 
         .btn-icon:hover {
             background-color: var(--bg-primary);
             color: var(--text-primary);
+            border-color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .btn-icon.danger:hover {
             background-color: #fee2e2;
             color: var(--danger-color);
+            border-color: var(--danger-color);
         }
 
         .empty-state {
@@ -370,6 +376,11 @@
             max-width: 800px;
         }
 
+        .modal-content.extra-large {
+            max-width: 1000px;
+            width: 95%;
+        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -430,6 +441,7 @@
             border-radius: 6px;
             margin-top: 1rem;
             font-size: 0.875rem;
+            overflow: auto;
         }
 
         .success-message {
@@ -462,7 +474,6 @@
             font-weight: 600;
             color: var(--text-secondary);
             margin-bottom: 0.5rem;
-            text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
@@ -569,6 +580,38 @@
             color: var(--text-secondary);
         }
 
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pagination-controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .operations-filters input,
+        .operations-filters select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.875rem;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .operations-filters input[type="datetime-local"] {
+            font-family: monospace;
+        }
+
+        .operations-filters input:focus,
+        .operations-filters select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
         @media (max-width: 768px) {
             .header-stats {
                 display: none;
@@ -595,6 +638,31 @@
             .payload-type-selector {
                 grid-template-columns: 1fr;
             }
+
+            .pagination-controls {
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+
+            /* Operations filters responsive */
+            .operations-filters .filter-row {
+                grid-template-columns: 1fr !important;
+            }
+
+            .operations-filters .status-buttons-row {
+                flex-direction: column !important;
+                gap: 1rem !important;
+                align-items: stretch !important;
+            }
+
+            .operations-filters .status-checkboxes {
+                gap: 1rem !important;
+                justify-content: center;
+            }
+
+            .operations-filters .filter-buttons {
+                justify-content: center !important;
+            }
         }
     </style>
 </head>
@@ -607,16 +675,8 @@
             </div>
             <div class="header-stats">
                 <div class="stat-item">
-                    <div class="stat-value" id="totalProcesses">0</div>
-                    <div class="stat-label">Total</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="runningProcesses">0</div>
-                    <div class="stat-label">Running</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="completedProcesses">0</div>
-                    <div class="stat-label">Completed</div>
+                    <div class="stat-value" id="workersInfo">0/0</div>
+                    <div class="stat-label">WORKERS</div>
                 </div>
                 <div id="engineInfo" style="display: flex; gap: 2rem;">
                     <!-- Engine stats will be injected here -->
@@ -636,6 +696,9 @@
                 </button>
                 <button class="btn btn-secondary" onclick="showEngineInfoModal()">
                     <span>&#9881;</span> Engine Info
+                </button>
+                <button class="btn btn-secondary" onclick="toggleOperationsSection()">
+                    <span>&#128196;</span> <span id="operationsToggleText">Hide All Operations</span>
                 </button>
             </div>
             <div class="auto-refresh">
@@ -658,7 +721,7 @@
 
         <div class="filter-bar">
             <div class="filter-item">
-                <label>Status Filter</label>
+                <label>STATUS FILTER</label>
                 <select id="statusFilter" onchange="applyFilters()">
                     <option value="">All Statuses</option>
                     <option value="0">Pending</option>
@@ -669,13 +732,13 @@
                 </select>
             </div>
             <div class="filter-item">
-                <label>Payload Type Filter</label>
+                <label>PAYLOAD TYPE FILTER</label>
                 <select id="payloadTypeFilter" onchange="applyFilters()">
                     <option value="">All Types</option>
                 </select>
             </div>
             <div class="filter-item">
-                <label>Search</label>
+                <label>SEARCH</label>
                 <input type="text" id="searchInput" placeholder="Search by Operation ID, Payload ID..." oninput="applyFilters()">
             </div>
         </div>
@@ -686,11 +749,29 @@
                 <span>Loading processes...</span>
             </div>
         </div>
+
+        <!-- Operations History Section -->
+        <div id="operationsSection" style="margin-top: 2rem;">
+            <div style="background-color: var(--bg-secondary); border-radius: 8px; box-shadow: var(--shadow); padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                    <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Operations History</h2>
+                    <button class="btn btn-secondary" onclick="toggleOperationsSection()">
+                        <span>&#10006;</span> Hide
+                    </button>
+                </div>
+                <div id="operationsContent">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Loading operations...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Detail Modal -->
     <div class="modal" id="detailModal">
-        <div class="modal-content">
+        <div class="modal-content large">
             <div class="modal-header">
                 <h2>Process Details</h2>
                 <button class="modal-close" onclick="closeModal('detailModal')">&times;</button>
@@ -737,6 +818,16 @@
         let payloadSchemas = {};
         let selectedPayloadType = null;
         let engineInfo = null;
+        let allOperations = [];
+        let operationsCurrentPage = 1;
+        let operationsPageSize = 10;
+        let operationsFilters = {
+            status: [],
+            ownerId: '',
+            search: '',
+            startDate: '',
+            endDate: ''
+        };
         const API_BASE = '/api/aos';
 
         const statusMap = {
@@ -778,6 +869,33 @@
             } catch (error) {
                 console.error('Error fetching payload schemas:', error);
                 return {};
+            }
+        }
+
+        async function fetchOperations(filters = {}) {
+            try {
+                const queryParams = new URLSearchParams();
+                
+                // Apply filters
+                if (filters.startDate) queryParams.append('startDate', filters.startDate);
+                if (filters.endDate) queryParams.append('endDate', filters.endDate);
+                if (filters.status && filters.status.length > 0) {
+                    filters.status.forEach(status => queryParams.append('status', status));
+                }
+                if (filters.ownerId) queryParams.append('ownerId', filters.ownerId);
+                if (filters.search) queryParams.append('search', filters.search);
+                
+                // Pagination
+                queryParams.append('pageNumber', filters.pageNumber || 1);
+                queryParams.append('pageSize', filters.pageSize || 10);
+                queryParams.append('isDesc', 'true'); // Show newest first
+                
+                const response = await fetch(`${API_BASE}/query/operations?${queryParams.toString()}`);
+                if (!response.ok) throw new Error('Failed to fetch operations');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching operations:', error);
+                return [];
             }
         }
 
@@ -857,13 +975,13 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Status</th>
-                            <th>Operation Name</th>
-                            <th>Payload Type</th>
-                            <th>Created At</th>
-                            <th>Running Time</th>
-                            <th>Operation ID</th>
-                            <th>Actions</th>
+                            <th>STATUS</th>
+                            <th>OPERATION NAME</th>
+                            <th>PAYLOAD TYPE</th>
+                            <th>CREATED AT</th>
+                            <th>RUNNING TIME</th>
+                            <th>OPERATION ID</th>
+                            <th>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -888,7 +1006,7 @@
                                 <td><code style="font-size: 0.75rem; color: var(--text-secondary);">${process.operationId?.substring(0, 8) || 'N/A'}</code></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-icon" onclick="showDetails('${process.operationId}')" title="View Details">&#128269;</button>
+                                        <button class="btn-icon" onclick="showDetails('${process.operationId}')" title="View Details">ℹ</button>
                                         ${process.status === 1 ? `<button class="btn-icon danger" onclick="cancelOperation('${process.operationId}')" title="Cancel">&#10006;</button>` : ''}
                                     </div>
                                 </td>
@@ -902,31 +1020,32 @@
         }
 
         function updateStats() {
-            document.getElementById('totalProcesses').textContent = allProcesses.length;
-            document.getElementById('runningProcesses').textContent = 
-                allProcesses.filter(p => p.status === 1).length;
-            document.getElementById('completedProcesses').textContent = 
-                allProcesses.filter(p => p.status === 2).length;
+            // Workers info will be updated in updateEngineStats
+            // Keep this function for potential future stats
         }
 
         function updateEngineStats() {
             if (!engineInfo) return;
 
-            // Update engine info in header or create a new section
+            // Update workers info in header
+            const workersInfo = document.getElementById('workersInfo');
+            if (workersInfo) {
+                const activeWorkers = engineInfo.activeProcessCount || 0;
+                const totalWorkers = engineInfo.workerCount || 0;
+                workersInfo.textContent = `${activeWorkers}/${totalWorkers}`;
+            }
+
+            // Update engine info in header
             const existingEngineInfo = document.getElementById('engineInfo');
             if (existingEngineInfo) {
                 existingEngineInfo.innerHTML = `
                     <div class="stat-item">
-                        <div class="stat-value">${engineInfo.workerCount || 0}</div>
-                        <div class="stat-label">Workers</div>
-                    </div>
-                    <div class="stat-item">
                         <div class="stat-value">${engineInfo.currentQueueSize || 0}/${engineInfo.queueSize || 0}</div>
-                        <div class="stat-label">Queue</div>
+                        <div class="stat-label">QUEUE</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-value">${engineInfo.queuePercentUsage || 0}%</div>
-                        <div class="stat-label">Queue Usage</div>
+                        <div class="stat-label">QUEUE USAGE</div>
                     </div>
                 `;
             }
@@ -940,9 +1059,11 @@
             modal.classList.add('active');
 
             try {
-                const [operation, progress] = await Promise.all([
+                const [operation, progress, payload, progressHistory] = await Promise.all([
                     fetch(`${API_BASE}/query/operation/${operationId}`).then(r => r.json()),
-                    fetch(`${API_BASE}/query/operation/${operationId}/progress`).then(r => r.json()).catch(() => null)
+                    fetch(`${API_BASE}/query/operation/${operationId}/progress`).then(r => r.json()).catch(() => null),
+                    fetch(`${API_BASE}/query/operation/${operationId}/payload`).then(r => r.json()).catch(() => null),
+                    fetch(`${API_BASE}/query/operation/${operationId}/progress/all`).then(r => r.json()).catch(() => [])
                 ]);
 
                 let html = `
@@ -991,7 +1112,7 @@
                 if (progress) {
                     html += `
                         <div class="detail-row">
-                            <div class="detail-label">Progress</div>
+                            <div class="detail-label">Current Progress</div>
                             <div class="detail-value">
                                 <div class="progress-bar" style="width: 200px;">
                                     <div class="progress-fill" style="width: ${progress.progress || 0}%"></div>
@@ -1002,9 +1123,81 @@
                     `;
                 }
 
+                // Add Payload Information Section
+                if (payload) {
+                    html += `
+                        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid var(--border-color);">
+                            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem;">Payload Information</h3>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload ID</div>
+                                <div class="detail-value"><code>${payload._id || 'N/A'}</code></div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Type</div>
+                                <div class="detail-value">${payload.payloadType || 'N/A'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Name</div>
+                                <div class="detail-value">${payload.name || 'N/A'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Description</div>
+                                <div class="detail-value">${payload.description || 'N/A'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Created At</div>
+                                <div class="detail-value">${formatDate(payload.createdAt)}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Data</div>
+                                <div class="detail-value">
+                                    <button class="btn btn-secondary btn-sm" onclick="showPayloadData('${payload._id}')">View Full Payload</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Add Progress History Section
+                if (progressHistory && progressHistory.length > 0) {
+                    html += `
+                        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid var(--border-color);">
+                            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem;">Progress History</h3>
+                            <div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
+                                <table style="width: 100%; font-size: 0.875rem;">
+                                    <thead style="background-color: var(--bg-primary); position: sticky; top: 0;">
+                                        <tr>
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color);">TIME</th>
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color);">STATUS</th>
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color);">PROGRESS</th>
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color);">MESSAGE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${progressHistory.slice().reverse().map(prog => `
+                                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                                <td style="padding: 0.5rem; font-family: monospace; font-size: 0.75rem;">${formatDate(prog.createdAt)}</td>
+                                                <td style="padding: 0.5rem;">
+                                                    <span class="status-badge ${statusMap[prog.status]?.class || 'status-pending'}" style="font-size: 0.625rem; padding: 0.125rem 0.5rem;">
+                                                        ${statusMap[prog.status]?.label || 'Unknown'}
+                                                    </span>
+                                                </td>
+                                                <td style="padding: 0.5rem; text-align: center;">
+                                                    <strong>${prog.progress || 0}%</strong>
+                                                </td>
+                                                <td style="padding: 0.5rem; max-width: 200px; word-break: break-word;">${prog.progressMessage || 'No message'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 if (operation.errorMessage) {
                     html += `
-                        <div class="error-message">
+                        <div class="error-message" style="margin-top: 1.5rem;">
                             <strong>Error:</strong> ${operation.errorMessage}
                             ${operation.innerErrorMessage ? `<br><br><strong>Inner Error:</strong> ${operation.innerErrorMessage}` : ''}
                         </div>
@@ -1150,6 +1343,624 @@
             } catch (error) {
                 modalBody.innerHTML = `<div class="error-message">Failed to load engine info: ${error.message}</div>`;
             }
+        }
+
+        async function toggleOperationsSection() {
+            const section = document.getElementById('operationsSection');
+            const toggleText = document.getElementById('operationsToggleText');
+            
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                toggleText.textContent = 'Hide All Operations';
+                
+                // Load operations if not already loaded
+                const content = document.getElementById('operationsContent');
+                if (content.innerHTML.includes('Loading operations...')) {
+                    await loadOperations();
+                }
+            } else {
+                section.style.display = 'none';
+                toggleText.textContent = 'Show All Operations';
+            }
+        }
+
+        async function loadOperations() {
+            // Create filters object with explicit pageSize control
+            const filters = {
+                status: operationsFilters.status,
+                ownerId: operationsFilters.ownerId,
+                search: operationsFilters.search,
+                startDate: operationsFilters.startDate,
+                endDate: operationsFilters.endDate,
+                pageNumber: operationsCurrentPage,
+                pageSize: operationsPageSize
+            };
+
+            allOperations = await fetchOperations(filters);
+            renderOperationsTable();
+        }
+
+        function renderOperationsTable() {
+            const contentDiv = document.getElementById('operationsContent');
+            
+            if (!allOperations || allOperations.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="operations-filters">
+                        ${renderOperationsFilters()}
+                    </div>
+                    ${renderActiveFilters()}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128196;</div>
+                        <h3>No operations found</h3>
+                        <p>No operations match the current filters.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="operations-filters">
+                    ${renderOperationsFilters()}
+                </div>
+                ${renderActiveFilters()}
+                <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                        Showing ${allOperations.length} operations (Page ${operationsCurrentPage})
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="btn btn-secondary" onclick="loadPreviousOperationsPage()" ${operationsCurrentPage <= 1 ? 'disabled' : ''}>Previous</button>
+                        <span style="margin: 0 1rem; font-size: 0.875rem;">Page ${operationsCurrentPage}</span>
+                        <button class="btn btn-secondary" onclick="loadNextOperationsPage()" ${allOperations.length < operationsPageSize ? 'disabled' : ''}>Next</button>
+                    </div>
+                </div>
+                <div style="max-height: 60vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <table>
+                        <thead style="position: sticky; top: 0; background-color: var(--bg-primary); z-index: 10;">
+                            <tr>
+                                <th>STATUS</th>
+                                <th>NAME</th>
+                                <th>CREATED</th>
+                                <th>STARTED</th>
+                                <th>COMPLETED</th>
+                                <th>DURATION</th>
+                                <th>OWNER ID</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allOperations.map(operation => `
+                                <tr>
+                                    <td>
+                                        <span class="status-badge ${statusMap[operation.status]?.class || 'status-pending'}">
+                                            ${statusMap[operation.status]?.label || 'Unknown'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong>${operation.name || 'N/A'}</strong>
+                                        ${operation.description ? `<br><small style="color: var(--text-secondary);">${operation.description}</small>` : ''}
+                                    </td>
+                                    <td class="time-display">${formatDate(operation.createdAt)}</td>
+                                    <td class="time-display">${operation.startedAt ? formatDate(operation.startedAt) : '-'}</td>
+                                    <td class="time-display">${operation.completedAt ? formatDate(operation.completedAt) : '-'}</td>
+                                    <td class="time-display">${formatDuration(operation.executionTimeMs)}</td>
+                                    <td><small>${operation.ownerId || 'N/A'}</small></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-icon" onclick="showOperationDetails('${operation._id}')" title="View Details">ℹ</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            contentDiv.innerHTML = html;
+        }
+
+        function renderActiveFilters() {
+            const activeFilters = [];
+            
+            // Status filters
+            if (operationsFilters.status.length > 0) {
+                const statusLabels = operationsFilters.status.map(status => statusMap[status]?.label || 'Unknown');
+                activeFilters.push(`Status: ${statusLabels.join(', ')}`);
+            }
+            
+            // Search filter
+            if (operationsFilters.search) {
+                activeFilters.push(`Search: "${operationsFilters.search}"`);
+            }
+            
+            // Owner filter
+            if (operationsFilters.ownerId) {
+                activeFilters.push(`Owner: ${operationsFilters.ownerId}`);
+            }
+            
+            // Date filters
+            if (operationsFilters.startDate) {
+                activeFilters.push(`From: ${formatDate(operationsFilters.startDate)}`);
+            }
+            
+            if (operationsFilters.endDate) {
+                activeFilters.push(`To: ${formatDate(operationsFilters.endDate)}`);
+            }
+            
+            if (activeFilters.length === 0) {
+                return '<div style="margin-bottom: 0.5rem; font-size: 0.75rem; color: var(--text-secondary);">No active filters</div>';
+            }
+            
+            return `
+                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background-color: #eff6ff; border-radius: 4px; border-left: 3px solid var(--primary-color);">
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Active Filters:</div>
+                    <div style="font-size: 0.75rem; color: var(--text-primary);">${activeFilters.join(' • ')}</div>
+                </div>
+            `;
+        }        
+        
+        function renderOperationsFilters() {
+            return `
+                <div style="background-color: var(--bg-primary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <!-- First row: Search, Owner ID, Start Date, End Date -->
+                    <div class="filter-row" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">SEARCH</label>
+                            <input type="text" id="operationsSearchInput" value="${operationsFilters.search}" placeholder="Search operations...">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">OWNER ID</label>
+                            <input type="text" id="operationsOwnerIdInput" value="${operationsFilters.ownerId}" placeholder="Filter by Owner ID...">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">START DATE</label>
+                            <input type="datetime-local" id="operationsStartDateInput" value="${operationsFilters.startDate}" step="1">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">END DATE</label>
+                            <input type="datetime-local" id="operationsEndDateInput" value="${operationsFilters.endDate}" step="1">
+                        </div>
+                    </div>
+                    
+                    <!-- Second row: Status checkboxes (left) and Buttons (right) -->
+                    <div class="status-buttons-row" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">STATUS</label>
+                            <div class="status-checkboxes" style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                                <label style="font-size: 0.875rem; font-weight: normal; display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" value="0" ${operationsFilters.status.includes('0') ? 'checked' : ''} style="margin: 0;"> Pending
+                                </label>
+                                <label style="font-size: 0.875rem; font-weight: normal; display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" value="1" ${operationsFilters.status.includes('1') ? 'checked' : ''} style="margin: 0;"> Running
+                                </label>
+                                <label style="font-size: 0.875rem; font-weight: normal; display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" value="2" ${operationsFilters.status.includes('2') ? 'checked' : ''} style="margin: 0;"> Completed
+                                </label>
+                                <label style="font-size: 0.875rem; font-weight: normal; display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" value="3" ${operationsFilters.status.includes('3') ? 'checked' : ''} style="margin: 0;"> Failed
+                                </label>
+                                <label style="font-size: 0.875rem; font-weight: normal; display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" value="4" ${operationsFilters.status.includes('4') ? 'checked' : ''} style="margin: 0;"> Canceled
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-buttons" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                            <button class="btn btn-primary" onclick="applyOperationsFilters()">Apply Filters</button>
+                            <button class="btn btn-secondary" onclick="clearOperationsFilters()">Clear Filters</button>
+                            <button class="btn btn-secondary" onclick="loadOperations()">Refresh</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function applyOperationsFilters() {
+            // Get selected status checkboxes
+            const statusCheckboxes = document.querySelectorAll('#operationsContent input[type="checkbox"]');
+            const selectedStatuses = Array.from(statusCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            operationsFilters = {
+                status: selectedStatuses,
+                search: document.getElementById('operationsSearchInput').value,
+                ownerId: document.getElementById('operationsOwnerIdInput').value,
+                startDate: document.getElementById('operationsStartDateInput').value,
+                endDate: document.getElementById('operationsEndDateInput').value
+            };
+            
+            operationsCurrentPage = 1; // Reset to first page
+            loadOperations();
+        }
+
+        function clearOperationsFilters() {
+            operationsFilters = {
+                status: [],
+                ownerId: '',
+                search: '',
+                startDate: '',
+                endDate: ''
+            };
+            operationsCurrentPage = 1;
+            loadOperations();
+        }
+
+        function loadPreviousOperationsPage() {
+            if (operationsCurrentPage > 1) {
+                operationsCurrentPage--;
+                loadOperations();
+            }
+        }
+
+        async function loadNextOperationsPage() {
+            if (allOperations.length >= operationsPageSize) {
+                const currentPageBackup = operationsCurrentPage;
+                operationsCurrentPage++;
+                
+                // Create filters for the next page
+                const filters = {
+                    status: operationsFilters.status,
+                    ownerId: operationsFilters.ownerId,
+                    search: operationsFilters.search,
+                    startDate: operationsFilters.startDate,
+                    endDate: operationsFilters.endDate,
+                    pageNumber: operationsCurrentPage,
+                    pageSize: operationsPageSize
+                };
+                
+                // Fetch operations for the next page
+                const nextPageOperations = await fetchOperations(filters);
+                
+                // If no operations found, revert to current page
+                if (!nextPageOperations || nextPageOperations.length === 0) {
+                    operationsCurrentPage = currentPageBackup;
+                    return; // Don't update the UI, stay on current page
+                }
+                
+                // Update with new operations and render
+                allOperations = nextPageOperations;
+                renderOperationsTable();
+            }
+        }
+
+        async function showOperationDetails(operationId) {
+            const modal = document.getElementById('detailModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalBody.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading operation details...</span></div>';
+            modal.classList.add('active');
+
+            try {
+                const [operation, progress, payload, progressHistory, result] = await Promise.all([
+                    fetch(`${API_BASE}/query/operation/${operationId}`).then(r => r.json()),
+                    fetch(`${API_BASE}/query/operation/${operationId}/progress`).then(r => r.json()).catch(() => null),
+                    fetch(`${API_BASE}/query/operation/${operationId}/payload`).then(r => r.json()).catch(() => null),
+                    fetch(`${API_BASE}/query/operation/${operationId}/progress/all`).then(r => r.json()).catch(() => []),
+                    fetch(`${API_BASE}/query/operation/${operationId}/result`).then(r => r.json()).catch(() => null)
+                ]);
+
+                let html = `
+                    <div class="detail-row">
+                        <div class="detail-label">Operation ID</div>
+                        <div class="detail-value"><code>${operation._id || 'N/A'}</code></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Name</div>
+                        <div class="detail-value">${operation.name || 'N/A'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge ${statusMap[operation.status]?.class || 'status-pending'}">
+                                ${statusMap[operation.status]?.label || 'Unknown'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Description</div>
+                        <div class="detail-value">${operation.description || 'N/A'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Created At</div>
+                        <div class="detail-value">${formatDate(operation.createdAt)}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Started At</div>
+                        <div class="detail-value">${operation.startedAt ? formatDate(operation.startedAt) : 'Not started'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Completed At</div>
+                        <div class="detail-value">${operation.completedAt ? formatDate(operation.completedAt) : 'Not completed'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Execution Time</div>
+                        <div class="detail-value">${formatDuration(operation.executionTimeMs)}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Owner ID</div>
+                        <div class="detail-value">${operation.ownerId || 'N/A'}</div>
+                    </div>
+                `;
+
+                if (progress) {
+                    html += `
+                        <div class="detail-row">
+                            <div class="detail-label">Current Progress</div>
+                            <div class="detail-value">
+                                <div class="progress-bar" style="width: 200px;">
+                                    <div class="progress-fill" style="width: ${progress.progress || 0}%"></div>
+                                </div>
+                                <div class="progress-text">${progress.progress || 0}% - ${progress.progressMessage || 'No message'}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Add Payload Information Section
+                if (payload) {
+                    html += `
+                        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid var(--border-color);">
+                            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem;">Payload Information</h3>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload ID</div>
+                                <div class="detail-value"><code>${payload._id || 'N/A'}</code></div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Type</div>
+                                <div class="detail-value">${payload.payloadType || 'N/A'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Name</div>
+                                <div class="detail-value">${payload.name || 'N/A'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Description</div>
+                                <div class="detail-value">${payload.description || 'N/A'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Created At</div>
+                                <div class="detail-value">${formatDate(payload.createdAt)}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Payload Data</div>
+                                <div class="detail-value">
+                                    <button class="btn btn-secondary btn-sm" onclick="showPayloadData('${payload._id}')">View Full Payload</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Add Progress History Section
+                if (progressHistory && progressHistory.length > 0) {
+                    html += `
+                        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid var(--border-color);">
+                            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem;">Progress History</h3>
+                            <div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
+                                <table style="width: 100%; font-size: 0.875rem;">
+                                    <thead style="background-color: var(--bg-primary); position: sticky; top: 0;">
+                                        <tr>
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color);">TIME</th>
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color);">STATUS</th>
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color);">PROGRESS</th>
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color);">MESSAGE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${progressHistory.slice().reverse().map(prog => `
+                                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                                <td style="padding: 0.5rem; font-family: monospace; font-size: 0.75rem;">${formatDate(prog.createdAt)}</td>
+                                                <td style="padding: 0.5rem;">
+                                                    <span class="status-badge ${statusMap[prog.status]?.class || 'status-pending'}" style="font-size: 0.625rem; padding: 0.125rem 0.5rem;">
+                                                        ${statusMap[prog.status]?.label || 'Unknown'}
+                                                    </span>
+                                                </td>
+                                                <td style="padding: 0.5rem; text-align: center;">
+                                                    <strong>${prog.progress || 0}%</strong>
+                                                </td>
+                                                <td style="padding: 0.5rem; max-width: 200px; word-break: break-word;">${prog.progressMessage || 'No message'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Add Result Information Section
+                if (result) {
+                    html += `
+                        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid var(--border-color);">
+                            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem;">Result Information</h3>
+                            <div class="detail-row">
+                                <div class="detail-label">Result ID</div>
+                                <div class="detail-value"><code>${result._id || 'N/A'}</code></div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Result Created At</div>
+                                <div class="detail-value">${formatDate(result.createdAt)}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Result Message</div>
+                                <div class="detail-value">${result.resultMessage || 'No message'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Result Data</div>
+                                <div class="detail-value">
+                                    <button class="btn btn-secondary btn-sm" onclick="showResultData('${result._id}')">View Full Result</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (operation.errorMessage) {
+                    html += `
+                        <div class="error-message" style="margin-top: 1.5rem;">
+                            <strong>Error:</strong> ${operation.errorMessage}
+                            ${operation.innerErrorMessage ? `<br><br><strong>Inner Error:</strong> ${operation.innerErrorMessage}` : ''}
+                            ${operation.errorStackTrace ? `<br><br><strong>Stack Trace:</strong><br><code style="font-size: 0.75rem; white-space: pre-wrap;">${operation.errorStackTrace}</code>` : ''}
+                        </div>
+                    `;
+                }
+
+                modalBody.innerHTML = html;
+            } catch (error) {
+                modalBody.innerHTML = `<div class="error-message">Failed to load operation details: ${error.message}</div>`;
+            }
+        }
+
+        async function showPayloadData(payloadId) {
+            const modal = document.getElementById('detailModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            // Store the current content before changing it
+            const previousContent = modalBody.innerHTML;
+            
+            modalBody.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading payload data...</span></div>';
+            
+            try {
+                const payload = await fetch(`${API_BASE}/query/payload/${payloadId}`).then(r => r.json());
+                
+                // Create a formatted JSON display of the full payload
+                const payloadJson = JSON.stringify(payload, null, 2);
+                
+                let html = `
+                    <div style="margin-bottom: 1rem;">
+                        <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">Complete Payload Data</h3>
+                        <p style="font-size: 0.875rem; color: var(--text-secondary);">Payload ID: <code>${payloadId}</code></p>
+                    </div>
+                    
+                    <div style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 1rem; max-height: 500px; overflow-y: auto;">
+                        <pre style="margin: 0; font-family: 'Courier New', Monaco, monospace; font-size: 0.75rem; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word;">${payloadJson}</pre>
+                    </div>
+                    
+                    <div style="margin-top: 1rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
+                        <button class="btn btn-secondary" id="copyPayloadBtn" data-payload='${payloadJson.replace(/'/g, "&apos;")}'>Copy to Clipboard</button>
+                        <button class="btn btn-primary" onclick="restorePreviousContent()">Back to Details</button>
+                    </div>
+                `;
+                
+                // Store the previous content and set new content
+                window.previousModalContent = previousContent;
+                modalBody.innerHTML = html;
+                
+                // Add event listener for copy button
+                document.getElementById('copyPayloadBtn').addEventListener('click', function() {
+                    const jsonData = this.getAttribute('data-payload').replace(/&apos;/g, "'");
+                    navigator.clipboard.writeText(jsonData).then(() => {
+                        const originalText = this.textContent;
+                        this.textContent = 'Copied!';
+                        this.style.backgroundColor = 'var(--success-color)';
+                        
+                        setTimeout(() => {
+                            this.textContent = originalText;
+                            this.style.backgroundColor = '';
+                        }, 2000);
+                    }).catch(err => {
+                        alert('Failed to copy to clipboard: ' + err.message);
+                    });
+                });
+                
+            } catch (error) {
+                modalBody.innerHTML = `
+                    <div class="error-message">Failed to load payload data: ${error.message}</div>
+                    <div style="margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="restorePreviousContent()">Back to Details</button>
+                    </div>
+                `;
+                window.previousModalContent = previousContent;
+            }
+        }
+
+        async function showResultData(resultId) {
+            const modal = document.getElementById('detailModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            // Store the current content before changing it
+            const previousContent = modalBody.innerHTML;
+            
+            modalBody.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading result data...</span></div>';
+            
+            try {
+                const result = await fetch(`${API_BASE}/query/result/${resultId}`).then(r => r.json());
+                
+                // Create a formatted JSON display of the full result
+                const resultJson = JSON.stringify(result, null, 2);
+                
+                let html = `
+                    <div style="margin-bottom: 1rem;">
+                        <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">Complete Result Data</h3>
+                        <p style="font-size: 0.875rem; color: var(--text-secondary);">Result ID: <code>${resultId}</code></p>
+                    </div>
+                    
+                    <div style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 1rem; max-height: 500px; overflow-y: auto;">
+                        <pre style="margin: 0; font-family: 'Courier New', Monaco, monospace; font-size: 0.75rem; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word;">${resultJson}</pre>
+                    </div>
+                    
+                    <div style="margin-top: 1rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
+                        <button class="btn btn-secondary" id="copyResultBtn" data-result='${resultJson.replace(/'/g, "&apos;")}'>Copy to Clipboard</button>
+                        <button class="btn btn-primary" onclick="restorePreviousContent()">Back to Details</button>
+                    </div>
+                `;
+                
+                // Store the previous content and set new content
+                window.previousModalContent = previousContent;
+                modalBody.innerHTML = html;
+                
+                // Add event listener for copy button
+                document.getElementById('copyResultBtn').addEventListener('click', function() {
+                    const jsonData = this.getAttribute('data-result').replace(/&apos;/g, "'");
+                    navigator.clipboard.writeText(jsonData).then(() => {
+                        const originalText = this.textContent;
+                        this.textContent = 'Copied!';
+                        this.style.backgroundColor = 'var(--success-color)';
+                        
+                        setTimeout(() => {
+                            this.textContent = originalText;
+                            this.style.backgroundColor = '';
+                        }, 2000);
+                    }).catch(err => {
+                        alert('Failed to copy to clipboard: ' + err.message);
+                    });
+                });
+                
+            } catch (error) {
+                modalBody.innerHTML = `
+                    <div class="error-message">Failed to load result data: ${error.message}</div>
+                    <div style="margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="restorePreviousContent()">Back to Details</button>
+                    </div>
+                `;
+                window.previousModalContent = previousContent;
+            }
+        }
+
+        function restorePreviousContent() {
+            const modalBody = document.getElementById('modalBody');
+            if (window.previousModalContent) {
+                modalBody.innerHTML = window.previousModalContent;
+                window.previousModalContent = null; // Clean up
+            }
+        }
+
+        function copyPayloadToClipboard(jsonData) {
+            navigator.clipboard.writeText(jsonData).then(() => {
+                // Show a temporary success message
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.style.backgroundColor = 'var(--success-color)';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.backgroundColor = '';
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy to clipboard: ' + err.message);
+            });
         }
 
         function selectPayloadType(type) {
@@ -1397,6 +2208,11 @@
         // Initialize
         refreshData();
         toggleAutoRefresh(); // Start auto-refresh with default interval (3s)
+        
+        // Load operations on startup since they're visible by default
+        window.addEventListener('load', async () => {
+            await loadOperations();
+        });
     </script>
 </body>
 </html>
