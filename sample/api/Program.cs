@@ -1,10 +1,11 @@
 using Bazlama.AsyncOperationSuite.Extensions;
 using Bazlama.AsyncOperationSuite.Storage.MemoryStorage;
+using Bazlama.AsyncOperationSuite.Storage.MSSQLStorage;
 using Bazlama.AsyncOperationSuite.Mvc.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Bazlama.AsyncOperationSuite.Storage.MSSQLStorage;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,9 +27,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // Add services to the container.
-builder.Services.AddAsyncOperationSuiteMemoryStorage();
-
-// builder.Services.AddAsyncOperationSuiteMSSQLStorage(builder.Configuration);
+builder.Services.AddAsyncOperationSuiteMemoryStorage(builder.Configuration);
+//builder.Services.AddAsyncOperationSuiteMSSQLStorage(builder.Configuration);
 builder.Services.AddAsyncOperationSuiteService(builder.Configuration);
 
 builder.Services.AddControllers();

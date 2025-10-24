@@ -6,7 +6,7 @@ namespace Bazlama.AsyncOperationSuite.Models;
 
 public abstract class AsyncOperationPayloadBase : IAsyncOperationStorableChild
 {
-    public string _id { get; set; } = string.Empty;
+    public string _id { get; set; } = Guid.NewGuid().ToString();
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public string OwnerId { get; set; } = string.Empty;
     public string OperationId { get; set; } = string.Empty;

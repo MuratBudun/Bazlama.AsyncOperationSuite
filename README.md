@@ -38,32 +38,32 @@ The suite consists of two main packages:
 ### Dashboard Overview
 ![Dashboard Overview](media/S01.png)
 
-### Operation Details
-![Operation Details](media/S02.png)
+### Create New Operation
+![Create New Operation](media/S02.png)
 
-### Progress Monitoring
-![Progress Monitoring](media/S03.png)
+![Create New Operation](media/S03.png)
 
-### Active Operations
-![Active Operations](media/S04.png)
-
-### Operation Results
-![Operation Results](media/S05.png)
-
-### API Documentation
-![API Documentation](media/S06.png)
-
-### Configuration Settings
-![Configuration Settings](media/S07.png)
+![Create New Operation](media/S04.png)
 
 ### Real-time Updates
-![Real-time Updates](media/S08.png)
+![Real-time Updates](media/S05.png)
 
 ### Operation History
-![Operation History](media/S09.png)
+![Operation History](media/S06.png)
 
-### Performance Metrics
-![Performance Metrics](media/S10.png)
+### Process Details
+![Process Details](media/S07.png)
+
+![Process Details](media/S08.png)
+
+![Process Details](media/S09.png)
+
+![Process Details](media/S10.png)
+
+### API Documentation
+![API Documentation](media/S11.png)
+
+![API Documentation](media/S12.png)
 
 ## Quick Start
 
@@ -140,7 +140,7 @@ public class DelayOperationProcessor : AsyncOperationProcess<DelayOperationPaylo
 
 ## Configuration
 
-### Basic Configuration
+### Basic AsyncOperationSuite Configuration
 
 ```json
 {
@@ -155,17 +155,274 @@ public class DelayOperationProcessor : AsyncOperationProcess<DelayOperationPaylo
 }
 ```
 
-### Storage Options
+### Storage Configuration Options
 
-#### Memory Storage
-```csharp
-builder.Services.AddAsyncOperationSuiteMemoryStorage();
+The AsyncOperationSuite supports multiple storage backends with comprehensive configuration options.
+
+#### Memory Storage Configuration
+
+Memory storage is ideal for development, testing, or applications that don't require persistence.
+
+```json
+{
+  "AsyncOperationSuiteConfiguration": {
+    "WorkerCount": 5,
+    "QueueSize": 1000,
+    "MemoryStorage": {
+      "MaxOperations": 1000,
+      "MaxPayloads": 1000,
+      "MaxProgress": 5000,
+      "MaxResults": 1000,
+      "CleanupStrategy": "RemoveCompletedFirst",
+      "CleanupBatchSize": 100,
+      "EnableAutoCleanup": true,
+      "CleanupThreshold": 0.9
+    }
+  }
+}
 ```
 
-#### SQL Server Storage
+**Memory Storage Options:**
+- `MaxOperations`: Maximum operations to keep in memory (default: 100)
+- `MaxPayloads`: Maximum payloads to keep in memory (default: 100)  
+- `MaxProgress`: Maximum progress records to keep in memory (default: 1000)
+- `MaxResults`: Maximum results to keep in memory (default: 100)
+- `CleanupStrategy`: Strategy when limit is reached
+  - `RemoveOldest`: Remove oldest items first
+  - `RemoveCompletedFirst`: Remove completed operations first
+  - `RemoveFailedFirst`: Remove failed operations first
+  - `ThrowException`: Throw exception when limit reached
+- `CleanupBatchSize`: Number of items to remove during cleanup (0 = auto 10%)
+- `EnableAutoCleanup`: Enable automatic cleanup (default: true)
+- `CleanupThreshold`: Cleanup trigger percentage (default: 0.9 = 90%)
+
+#### SQL Server Storage Configuration
+
+SQL Server storage provides persistence and is suitable for production environments.
+
+```json
+{
+  "AsyncOperationSuiteConfiguration": {
+    "WorkerCount": 5,
+    "QueueSize": 1000,
+    "MSSQLStorage": {
+      "ConnectionString": "Data Source=localhost;Initial Catalog=AsyncOperationSuite;Integrated Security=true;TrustServerCertificate=True;",
+      "CommandTimeout": 30,
+      "EnableDetailedLogging": false,
+      "MaxPoolSize": 100,
+      "MinPoolSize": 5
+    }
+  }
+}
+```
+
+**SQL Server Storage Options:**
+- `ConnectionString`: SQL Server connection string
+- `CommandTimeout`: Command timeout in seconds (default: 30)
+- `EnableDetailedLogging`: Enable detailed SQL logging (default: false)
+- `MaxPoolSize`: Maximum connection pool size (default: 100)
+- `MinPoolSize`: Minimum connection pool size (default: 5)
+
+#### Production Configuration Example
+
+```json
+{
+  "AsyncOperationSuiteConfiguration": {
+    "WorkerCount": 10,
+    "QueueSize": 5000,
+    "PayloadConcurrentConstraints": {
+      "EmailOperationPayload": 5,
+      "ReportGenerationPayload": 2,
+      "DataImportPayload": 1,
+      "BackupOperationPayload": 1
+    },
+    "MSSQLStorage": {
+      "ConnectionString": "Data Source=prod-sql-server;Initial Catalog=AsyncOperationSuite;User ID=async_user;Password=your_secure_password;TrustServerCertificate=True;Connection Timeout=30;",
+      "CommandTimeout": 60,
+      "EnableDetailedLogging": false,
+      "MaxPoolSize": 200,
+      "MinPoolSize": 10
+    }
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Bazlama.AsyncOperationSuite": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
+```
+
+### Storage Provider Setup
+
+#### Memory Storage Setup
+Memory storage is perfect for development and testing scenarios where persistence is not required.
+
 ```csharp
+using Bazlama.AsyncOperationSuite.Extensions;
+using Bazlama.AsyncOperationSuite.Storage.MemoryStorage;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Configure Memory Storage
+builder.Services.AddAsyncOperationSuiteMemoryStorage(builder.Configuration);
+builder.Services.AddAsyncOperationSuiteService(builder.Configuration);
+
+var app = builder.Build();
+```
+
+#### SQL Server Storage Setup
+SQL Server storage provides persistence and is recommended for production environments.
+
+```csharp
+using Bazlama.AsyncOperationSuite.Extensions;
+using Bazlama.AsyncOperationSuite.Storage.MSSQLStorage;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Configure SQL Server Storage
 builder.Services.AddAsyncOperationSuiteMSSQLStorage(builder.Configuration);
+builder.Services.AddAsyncOperationSuiteService(builder.Configuration);
+
+var app = builder.Build();
 ```
+
+#### Hybrid Configuration
+You can also configure both storage providers and choose which one to use based on environment:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddAsyncOperationSuiteMemoryStorage(builder.Configuration);
+}
+else
+{
+    builder.Services.AddAsyncOperationSuiteMSSQLStorage(builder.Configuration);
+}
+
+builder.Services.AddAsyncOperationSuiteService(builder.Configuration);
+```
+
+### Database Schema (SQL Server)
+
+When using SQL Server storage, the following tables will be created automatically:
+
+- `AsyncOperations`: Stores operation metadata and status
+- `AsyncOperationPayloads`: Stores operation payload data
+- `AsyncOperationProgress`: Stores progress updates
+- `AsyncOperationResults`: Stores operation results
+
+## Performance Considerations
+
+### Memory Storage
+- **Pros**: Ultra-fast operations, no network latency, ideal for development
+- **Cons**: No persistence, limited by available RAM, data loss on restart
+- **Use Cases**: Development, testing, temporary operations, caching scenarios
+
+### SQL Server Storage  
+- **Pros**: Full persistence, ACID compliance, scalable, production-ready
+- **Cons**: Network latency, requires database infrastructure
+- **Use Cases**: Production environments, audit requirements, long-term storage
+
+### Scaling Guidelines
+
+#### Worker Configuration
+```json
+{
+  "AsyncOperationSuiteConfiguration": {
+    "WorkerCount": 10,  // Adjust based on CPU cores and workload
+    "QueueSize": 5000   // Adjust based on memory and peak load
+  }
+}
+```
+
+#### Payload Constraints
+Control concurrent operations per type to prevent resource exhaustion:
+
+```json
+{
+  "AsyncOperationSuiteConfiguration": {
+    "PayloadConcurrentConstraints": {
+      "CPUIntensiveOperation": 2,     // Limit CPU-heavy operations
+      "IOIntensiveOperation": 10,     // Allow more I/O operations
+      "DatabaseOperation": 5,         // Control database connections
+      "EmailOperation": 20            // Network operations can be higher
+    }
+  }
+}
+```
+
+## Monitoring and Observability
+
+### Built-in Metrics
+The suite provides comprehensive logging and metrics:
+
+```csharp
+// Enable detailed logging
+"Logging": {
+  "LogLevel": {
+    "Bazlama.AsyncOperationSuite": "Debug",
+    "Bazlama.AsyncOperationSuite.Services": "Information"
+  }
+}
+```
+
+### Health Checks
+Monitor system health with built-in endpoints:
+
+```csharp
+builder.Services.AddHealthChecks()
+    .AddAsyncOperationSuiteHealthCheck();
+```
+
+### Custom Metrics Integration
+Integrate with your monitoring solution:
+
+```csharp
+// Example with Application Insights
+builder.Services.AddApplicationInsightsTelemetry();
+builder.Services.AddAsyncOperationSuiteService(builder.Configuration);
+```
+
+## Security Considerations
+
+### Connection String Security
+Always secure your connection strings:
+
+```csharp
+// Use Azure Key Vault or similar for production
+builder.Configuration.AddAzureKeyVault(/* configuration */);
+
+// Or use environment variables
+"ConnectionStrings": {
+  "AsyncOperationSuite": "#{AsyncOperation_ConnectionString}#"
+}
+```
+
+### Authentication & Authorization
+Implement proper security controls:
+
+```csharp
+// JWT Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options => { /* configuration */ });
+
+// Require authorization for all controllers
+builder.Services.AddAsyncOperationSuiteMvcAllControllers(requireAuthorization: true);
+
+// Or selective authorization
+builder.Services.AddAsyncOperationSuiteMvcOperationPublish(requireAuthorization: true);
+builder.Services.AddAsyncOperationSuiteMvcOperationQuery(requireAuthorization: false);
+```
+
+### Data Protection
+- Always use HTTPS in production
+- Encrypt sensitive payload data
+- Implement proper input validation
+- Use SQL injection protection (built-in with parameterized queries)
 
 ## API Endpoints
 
@@ -176,6 +433,34 @@ The MVC extension provides comprehensive REST API endpoints:
 - `GET /api/operation/payload` - Get registered payload types
 - `GET /api/operation/active` - Get active operations
 - `GET /api/operation/engine-info` - Get engine information
+
+### API Usage Examples
+
+#### Publishing an Operation
+```bash
+POST /api/operation/publish
+Content-Type: application/json
+
+{
+  "payloadType": "DelayOperationPayload",
+  "payload": {
+    "Name": "Test Operation",
+    "Description": "Test operation description",
+    "DelaySeconds": 5,
+    "StepCount": 10
+  }
+}
+```
+
+#### Querying Operations
+```bash
+GET /api/operation/query?status=Running&pageSize=10&pageNumber=1
+```
+
+#### Getting Active Operations
+```bash
+GET /api/operation/active
+```
 
 ## Authentication
 
@@ -229,6 +514,112 @@ The repository includes a complete sample application demonstrating:
 - Frontend dashboard with real-time monitoring
 - Authentication integration
 - Storage configuration examples
+
+### Running the Sample Application
+
+To run the sample API application:
+
+```bash
+cd sample/api
+dotnet run
+```
+
+The API will be available at `https://localhost:5292` and includes:
+- Interactive Swagger documentation at `/swagger`
+- Real-time operation monitoring dashboard
+- Sample operation types for testing
+
+## Troubleshooting
+
+### Common Issues
+
+#### "Unable to resolve service for type 'AsyncOperationService'"
+Make sure you've registered the service:
+```csharp
+builder.Services.AddAsyncOperationSuiteService(builder.Configuration);
+```
+
+#### "Failed to add operation process to the dictionary"
+This indicates duplicate operation IDs. Ensure each operation has a unique ID:
+```csharp
+// AsyncOperationPayloadBase automatically generates unique IDs
+public class MyPayload : AsyncOperationPayloadBase
+{
+    // Your properties
+}
+```
+
+#### Memory Storage Cleanup Issues
+Adjust cleanup configuration for your workload:
+```json
+{
+  "AsyncOperationSuiteConfiguration": {
+    "MemoryStorage": {
+      "MaxOperations": 5000,
+      "CleanupThreshold": 0.8,
+      "CleanupStrategy": "RemoveCompletedFirst"
+    }
+  }
+}
+```
+
+#### SQL Server Connection Issues
+Verify your connection string and database permissions:
+```json
+{
+  "AsyncOperationSuiteConfiguration": {
+    "MSSQLStorage": {
+      "ConnectionString": "...",
+      "CommandTimeout": 60,
+      "EnableDetailedLogging": true
+    }
+  }
+}
+```
+
+### Best Practices
+
+#### Operation Design
+- Keep operations idempotent when possible
+- Implement proper cancellation token handling
+- Use progress reporting for long-running operations
+- Set meaningful operation names and descriptions
+
+#### Performance Optimization
+- Configure worker count based on your CPU cores
+- Set appropriate payload constraints
+- Use SQL Server storage for production environments
+- Monitor queue size and adjust accordingly
+
+#### Error Handling
+```csharp
+protected override async Task OnExecuteAsync(
+    IServiceProvider serviceProvider,
+    ILogger logger,
+    CancellationToken cancellationToken)
+{
+    try
+    {
+        // Your operation logic
+        await PublishProgress("Processing...", 50, cancellationToken);
+        
+        // Set success result
+        SetResult("Success", "Operation completed successfully");
+    }
+    catch (OperationCanceledException)
+    {
+        // Handle cancellation gracefully
+        logger.LogWarning("Operation was cancelled");
+        throw; // Re-throw to maintain cancellation behavior
+    }
+    catch (Exception ex)
+    {
+        // Log and handle errors
+        logger.LogError(ex, "Operation failed");
+        throw; // Framework will handle error state
+    }
+}
+```
 
 ## Requirements
 

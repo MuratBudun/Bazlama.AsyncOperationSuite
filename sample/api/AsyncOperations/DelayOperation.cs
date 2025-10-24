@@ -33,7 +33,6 @@ public class DelayOperationProcessor : AsyncOperationProcess<DelayOperationPaylo
             var progress = (i + 1) * 100 / Payload.StepCount;
             await PublishProgress($"Step {i + 1} of {Payload.StepCount}", progress, cancellationToken);
             await Task.Delay(Payload.DelaySeconds * 1000, cancellationToken);
-            Console.WriteLine($"Step {i + 1} of {Payload.StepCount} completed");
 			totalSeconds += Payload.DelaySeconds;
 		}
 

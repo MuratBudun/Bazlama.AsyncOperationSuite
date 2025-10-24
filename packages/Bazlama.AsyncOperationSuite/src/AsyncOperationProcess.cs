@@ -65,7 +65,7 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
             Status = AsyncOperation.Status
         };
 
-        Progress = await AsyncOperationService.ProgressRepository.UpsertAysnc(progressPayload, cancellationToken);
+        Progress = await AsyncOperationService.ProgressRepository.UpsertAsync(progressPayload, cancellationToken);
     }
 
 	private async Task UpdateStatus(AsyncOperationStatus status, CancellationToken cancellationToken)
@@ -90,7 +90,7 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
 			Status = status
 		};
 		Progress.Status = status;
-		Progress = await AsyncOperationService.ProgressRepository.UpsertAysnc(Progress, cancellationToken);
+		Progress = await AsyncOperationService.ProgressRepository.UpsertAsync(Progress, cancellationToken);
 	}
 
     public void SetResult(string data, string message)
@@ -109,7 +109,7 @@ public abstract class AsyncOperationProcess<T> where T : AsyncOperationPayloadBa
 	private async Task WriteResult(CancellationToken cancellationToken)
     {
         if (Result == null) return;
-        Result = await AsyncOperationService.ResultRepository.UpsertAysnc(Result, cancellationToken);
+        Result = await AsyncOperationService.ResultRepository.UpsertAsync(Result, cancellationToken);
     }
 
     public async Task ExecuteAsync(
