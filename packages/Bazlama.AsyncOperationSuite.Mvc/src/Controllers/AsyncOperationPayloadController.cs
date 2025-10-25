@@ -13,30 +13,30 @@ namespace Bazlama.AsyncOperationSuite.Mvc.Controllers;
 [Route("payload", Name = "Async Operation Suite Payload")]
 internal class AsyncOperationPayloadController : ControllerBase
 {
-    private readonly ILogger _logger;
-    private readonly AsyncOperationService _asyncOperationService;
+	private readonly ILogger _logger;
+	private readonly AsyncOperationService _asyncOperationService;
 
-    public AsyncOperationPayloadController(
-        AsyncOperationService asyncOperationService,
-        ILogger<AsyncOperationQueryController> logger)
-    {
-        ArgumentNullException.ThrowIfNull(asyncOperationService);
+	public AsyncOperationPayloadController(
+		AsyncOperationService asyncOperationService,
+		ILogger<AsyncOperationQueryController> logger)
+	{
+		ArgumentNullException.ThrowIfNull(asyncOperationService);
 
-        _logger = logger;
-        _asyncOperationService = asyncOperationService;
-    }
+		_logger = logger;
+		_asyncOperationService = asyncOperationService;
+	}
 
-    [HttpGet]
-    [EndpointDescription("Get the list of registered payload types and their corresponding operation types.")]
+	[HttpGet]
+	[EndpointDescription("Get the list of registered payload types and their corresponding operation types.")]
 	[ProducesResponseType<RegisteredPayloadDto>(StatusCodes.Status200OK)]
-    public ActionResult<RegisteredPayloadDto> GetRegisteredPayloads()
-    {
-        var result = _asyncOperationService.GetRegisteredPayloads();
-        return Ok(result);
-    }
+	public ActionResult<RegisteredPayloadDto> GetRegisteredPayloads()
+	{
+		var result = _asyncOperationService.GetRegisteredPayloads();
+		return Ok(result);
+	}
 
 	[HttpGet("type")]
-    [EndpointDescription("Get the list of registered payload types with their JSON schemas.")]
+	[EndpointDescription("Get the list of registered payload types with their JSON schemas.")]
 	[ProducesResponseType<List<Type>>(StatusCodes.Status200OK)]
 	public ActionResult<Dictionary<string, object>> GetRegisteredPayloadTypes()
 	{
@@ -45,7 +45,7 @@ internal class AsyncOperationPayloadController : ControllerBase
 
 		foreach (var type in payloadTypes)
 		{
-			var schema = JsonSchema.FromType(type); 
+			var schema = JsonSchema.FromType(type);
 			result[type.Name] = JsonDocument.Parse(schema.ToJson()).RootElement;
 		}
 
@@ -53,13 +53,17 @@ internal class AsyncOperationPayloadController : ControllerBase
 	}
 
 	[HttpGet("type/{name}")]
-    [EndpointDescription("Get the JSON schema of a registered payload type by its name.")]
-	[ProducesResponseType<JsonDocument>(StatusCodes.Status200OK)]
+	[EndpointDescription("Get the JSON schema of a registered payload type by its name.")]
+	[ProducesResponseType<List<Type>>(StatusCodes.Status200OK)]
 	[ProducesResponseType(StatusCodes.Status404NotFound)]
 	public ActionResult<JsonDocument> GetRegisteredPayloadType(String name)
 	{
-		var result = _asyncOperationService.GetPayloadTypeByName(name);
-        if (result == null) return NotFound(new { message = "Payload type not found" });
+		var result = new Dictionary<string, object>();
+		var payloadType = _asyncOperationService.GetPayloadTypeByName(name);
+		if (payloadType == null) return NotFound(new { message = "Payload type not found" });
+
+		var schema = JsonSchema.FromType(payloadType);
+		result[payloadType.Name] = JsonDocument.Parse(schema.ToJson()).RootElement;
 		return Ok(result);
 	}
 }
