@@ -1,0 +1,86 @@
+name: Publish NuGet Packages
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version to publish'
+        required: true
+        type: string
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  CONFIGURATION: 'Release'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+      
+    - name: Restore dependencies
+      run: dotnet restore packages/packages.sln
+      
+    - name: Build Bazlama.AsyncOperationSuite
+      run: |
+        dotnet build packages/Bazlama.AsyncOperationSuite/Bazlama.AsyncOperationSuite.csproj \
+          --configuration ${{ env.CONFIGURATION }} \
+          --no-restore \
+          /p:Version=${{ steps.get_version.outputs.VERSION }}
+          
+    - name: Build Bazlama.AsyncOperationSuite.Mvc
+      run: |
+        dotnet build packages/Bazlama.AsyncOperationSuite.Mvc/Bazlama.AsyncOperationSuite.Mvc.csproj \
+          --configuration ${{ env.CONFIGURATION }} \
+          --no-restore \
+          /p:Version=${{ steps.get_version.outputs.VERSION }}
+          
+    - name: Pack Bazlama.AsyncOperationSuite
+      run: |
+        dotnet pack packages/Bazlama.AsyncOperationSuite/Bazlama.AsyncOperationSuite.csproj \
+          --configuration ${{ env.CONFIGURATION }} \
+          --no-build \
+          --output ./artifacts \
+          /p:Version=${{ steps.get_version.outputs.VERSION }}
+          
+    - name: Pack Bazlama.AsyncOperationSuite.Mvc
+      run: |
+        dotnet pack packages/Bazlama.AsyncOperationSuite.Mvc/Bazlama.AsyncOperationSuite.Mvc.csproj \
+          --configuration ${{ env.CONFIGURATION }} \
+          --no-build \
+          --output ./artifacts \
+          /p:Version=${{ steps.get_version.outputs.VERSION }}
+          
+    - name: Publish packages to NuGet
+      run: |
+        dotnet nuget push ./artifacts/*.nupkg \
+          --api-key ${{ secrets.NUGET_API_KEY }} \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate
+          
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./artifacts/*.nupkg
+        retention-days: 30
