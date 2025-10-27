@@ -7,14 +7,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace api.Controllers;
 
 [ApiController]
-[Route("/ttapi/[controller]")]
-public class ValuesController : ControllerBase
+[Route("/welcome")]
+public class HomeController : ControllerBase
 {
 	[HttpGet]
-	[Authorize]
-	public IActionResult GetValues()
+	public IActionResult Welcome()
 	{
-		return Ok(new string[] { "value1", "value2" });
+		return Ok(new { message = "Welcome to the Async Operation Suite example API!" });
 	}
 
 	[HttpPost("test-delay-operations")]

@@ -488,22 +488,30 @@ builder.Services.AddAsyncOperationSuiteMvcAllControllers(requireAuthorization: t
 
 ## Frontend Integration
 
-The project includes a TypeScript-based frontend client for real-time operation monitoring:
+The API works seamlessly with any frontend framework. Example using JavaScript/TypeScript:
 
 ```typescript
-import { AsyncOperationClient } from './AsyncOperationClient/AsyncOperationClient.ts'
-
-const client = new AsyncOperationClient()
-await client.init()
-
 // Publish an operation
-const result = await client.Publish("DelayOperationPayload", { 
-    DelaySeconds: 1,
-    StepCount: 10
-})
+const response = await fetch('/api/aos/publish?payloadType=DelayOperationPayload', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_JWT_TOKEN'
+    },
+    body: JSON.stringify({
+        Name: 'My Operation',
+        DelaySeconds: 5,
+        StepCount: 10
+    })
+});
 
-// Monitor active processes
-const activeProcesses = await client.getActiveProcesses()
+const result = await response.json();
+console.log('Operation ID:', result.operationId);
+
+// Poll for progress
+const progressResponse = await fetch(`/api/aos/query/operation/${result.operationId}/progress`);
+const progress = await progressResponse.json();
+console.log('Progress:', progress.percentage);
 ```
 
 ## Sample Application

@@ -25,7 +25,7 @@ public class AsyncOperationMSSQLStorage : IAsyncOperationStorage
     {
         _logger = logger;
         _config = config.Value;
-        _connectionString = _config.ConnectionString;
+        _connectionString = BuildConnectionString(_config);
 
         if (string.IsNullOrWhiteSpace(_connectionString))
 		{
@@ -41,6 +41,28 @@ public class AsyncOperationMSSQLStorage : IAsyncOperationStorage
         Payload = new AsyncOperationSqlBaseChildRepo<AsyncOperationPayloadBase>(_config, _logger);
         Progress = new AsyncOperationSqlBaseChildRepo<AsyncOperationProgress>(_config, _logger);
         Result = new AsyncOperationSqlBaseChildRepo<AsyncOperationResult>(_config, _logger);
+    }
+
+    private static string BuildConnectionString(MSSQLStorageConfiguration config)
+    {
+        var baseConnectionString = config.ConnectionString;
+        
+        // Check if connection string already contains pool size settings
+        if (baseConnectionString.Contains("Max Pool Size", StringComparison.OrdinalIgnoreCase) ||
+            baseConnectionString.Contains("Min Pool Size", StringComparison.OrdinalIgnoreCase))
+        {
+            // User has already set pool sizes in the connection string, don't override
+            return baseConnectionString;
+        }
+        
+        // Build connection string with pool size settings
+        var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(baseConnectionString)
+        {
+            MaxPoolSize = config.MaxPoolSize,
+            MinPoolSize = config.MinPoolSize
+        };
+        
+        return builder.ConnectionString;
     }
 
     private void CheckTableExists()

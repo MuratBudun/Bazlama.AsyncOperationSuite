@@ -12,12 +12,36 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
     private readonly MSSQLStorageConfiguration _config;
     private readonly ILogger _logger;
     private readonly string _tableName;
+    private readonly string _connectionString;
 
     public AsyncOperationSqlBaseRepo(MSSQLStorageConfiguration config, ILogger logger)
     {
         _config = config;
         _logger = logger;
         _tableName = GetTableName();
+        _connectionString = BuildConnectionString(config);
+    }
+
+    private static string BuildConnectionString(MSSQLStorageConfiguration config)
+    {
+        var baseConnectionString = config.ConnectionString;
+        
+        // Check if connection string already contains pool size settings
+        if (baseConnectionString.Contains("Max Pool Size", StringComparison.OrdinalIgnoreCase) ||
+            baseConnectionString.Contains("Min Pool Size", StringComparison.OrdinalIgnoreCase))
+        {
+            // User has already set pool sizes in the connection string, don't override
+            return baseConnectionString;
+        }
+        
+        // Build connection string with pool size settings
+        var builder = new SqlConnectionStringBuilder(baseConnectionString)
+        {
+            MaxPoolSize = config.MaxPoolSize,
+            MinPoolSize = config.MinPoolSize
+        };
+        
+        return builder.ConnectionString;
     }
 
     private string GetTableName()
@@ -33,7 +57,7 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = $@"
@@ -47,6 +71,11 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
             AddParametersForAsyncOperation(command, item);
 
             await command.ExecuteNonQueryAsync(cancellationToken);
+
+            if (_config.EnableDetailedLogging)
+            {
+                _logger.LogInformation("Created new item in {TableName} with id {Id}", _tableName, (item as AsyncOperation)?._id);
+            }
             return item;
         }
         catch (Exception ex)
@@ -60,7 +89,7 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = $"SELECT * FROM {_tableName} WHERE _id = @Id";
@@ -70,10 +99,15 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
             command.Parameters.Add("@Id", SqlDbType.NVarChar).Value = id;
 
             using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            
+
             if (await reader.ReadAsync(cancellationToken))
             {
                 return MapFromReader(reader);
+            }
+
+            if (_config.EnableDetailedLogging)
+            {
+                _logger.LogInformation("Item with id {Id} not found in {TableName}", id, _tableName);
             }
 
             return default;
@@ -89,7 +123,7 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = $@"
@@ -106,6 +140,12 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
             AddParametersForAsyncOperation(command, item);
 
             var rowsAffected = await command.ExecuteNonQueryAsync(cancellationToken);
+
+            if (_config.EnableDetailedLogging)
+            {
+                _logger.LogInformation("Updated item in {TableName} with id {Id}", _tableName, (item as AsyncOperation)?._id);
+            }
+
             return rowsAffected > 0 ? item : default;
         }
         catch (Exception ex)
@@ -119,7 +159,7 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
             
             // For AsyncOperation table, we need to manually handle cascade delete
@@ -181,7 +221,7 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = $@"
@@ -201,6 +241,12 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
             AddParametersForAsyncOperation(command, item);
 
             await command.ExecuteNonQueryAsync(cancellationToken);
+
+            if (_config.EnableDetailedLogging)
+            {
+                _logger.LogInformation("Upserted item in {TableName} with id {Id}", _tableName, (item as AsyncOperation)?._id);
+            }
+
             return item;
         }
         catch (Exception ex)
@@ -216,7 +262,7 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var whereClause = BuildWhereClause(status, ownerId);
@@ -256,7 +302,7 @@ public class AsyncOperationSqlBaseRepo<T> : IAsyncOperationRepository<T> where T
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var whereClause = BuildWhereClauseWithDatesAndSearch(status, ownerId, search);

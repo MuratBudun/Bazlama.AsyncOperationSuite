@@ -14,12 +14,36 @@ public class AsyncOperationSqlBaseChildRepo<T> : IAsyncOperationRepositoryChild<
     private readonly MSSQLStorageConfiguration _config;
     private readonly ILogger _logger;
     private readonly string _tableName;
+    private readonly string _connectionString;
 
     public AsyncOperationSqlBaseChildRepo(MSSQLStorageConfiguration config, ILogger logger)
     {
         _config = config;
         _logger = logger;
         _tableName = GetTableName();
+        _connectionString = BuildConnectionString(config);
+    }
+
+    private static string BuildConnectionString(MSSQLStorageConfiguration config)
+    {
+        var baseConnectionString = config.ConnectionString;
+        
+        // Check if connection string already contains pool size settings
+        if (baseConnectionString.Contains("Max Pool Size", StringComparison.OrdinalIgnoreCase) ||
+            baseConnectionString.Contains("Min Pool Size", StringComparison.OrdinalIgnoreCase))
+        {
+            // User has already set pool sizes in the connection string, don't override
+            return baseConnectionString;
+        }
+        
+        // Build connection string with pool size settings
+        var builder = new SqlConnectionStringBuilder(baseConnectionString)
+        {
+            MaxPoolSize = config.MaxPoolSize,
+            MinPoolSize = config.MinPoolSize
+        };
+        
+        return builder.ConnectionString;
     }
 
     private string GetTableName()
@@ -37,7 +61,7 @@ public class AsyncOperationSqlBaseChildRepo<T> : IAsyncOperationRepositoryChild<
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = GetInsertSql();
@@ -59,7 +83,7 @@ public class AsyncOperationSqlBaseChildRepo<T> : IAsyncOperationRepositoryChild<
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = GetUpsertSql();
@@ -81,7 +105,7 @@ public class AsyncOperationSqlBaseChildRepo<T> : IAsyncOperationRepositoryChild<
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = $"SELECT * FROM {_tableName} WHERE _id = @Id";
@@ -109,7 +133,7 @@ public class AsyncOperationSqlBaseChildRepo<T> : IAsyncOperationRepositoryChild<
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = $"SELECT * FROM {_tableName} WHERE OperationId = @OperationId ORDER BY CreatedAt";
@@ -140,7 +164,7 @@ public class AsyncOperationSqlBaseChildRepo<T> : IAsyncOperationRepositoryChild<
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = $"SELECT TOP(1) * FROM {_tableName} WHERE OperationId = @OperationId ORDER BY CreatedAt DESC";
@@ -168,7 +192,7 @@ public class AsyncOperationSqlBaseChildRepo<T> : IAsyncOperationRepositoryChild<
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = $"DELETE FROM {_tableName} WHERE _id = @Id";
@@ -189,7 +213,7 @@ public class AsyncOperationSqlBaseChildRepo<T> : IAsyncOperationRepositoryChild<
     {
         try
         {
-            using var connection = new SqlConnection(_config.ConnectionString);
+            using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
             var sql = GetUpdateSql();
